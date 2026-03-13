@@ -1,0 +1,16 @@
+---
+description: Math research discipline for hypothesis project
+globs: Math_Hypothese_AutoCheck_Witch_Agents/**/*
+alwaysApply: false
+---
+
+# Math Hypothesis Research
+
+- Use this project for structured mathematical research, not ad hoc note dumping.
+- Prefer converting important ideas into linked knowledge artifacts: hypotheses, concepts, proofs, insights, and reports.
+- Keep computational evidence distinct from proof claims.
+- Reuse the project's multimodel and Lean-aware workflows when relevant.
+- When adding major math context, preserve links between cards, reports, and source prompts.
+
+Example:
+- New theoretical observation from Kaggle analysis -> route it into a structured hypothesis or insight rather than a loose note.

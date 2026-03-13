@@ -1,0 +1,13 @@
+- https://www.kaggle.com/competitions/cayleypy-christophers-jewel
+- https://www.kaggle.com/competitions/cayley-py-professor-tetraminx-solve-optimally
+- https://www.kaggle.com/competitions/cayleypy-ihes-cube
+- https://www.kaggle.com/competitions/cayley-py-444-cube
+- https://www.kaggle.com/competitions/cayleypy-glushkov
+- https://www.kaggle.com/competitions/CayleyPy-pancake
+- https://www.kaggle.com/competitions/cayley-py-megaminx    
+- https://www.kaggle.com/competitions/cayleypy-rapapport-m2
+- https://www.kaggle.com/competitions/cayleypy-reversals
+- https://www.kaggle.com/competitions/cayley-py-555-cube
+- https://www.kaggle.com/competitions/cayley-py-666-cube
+- https://www.kaggle.com/competitions/cayley-py-777-cube
+- https://www.kaggle.com/competitions/cayleypy-transposons

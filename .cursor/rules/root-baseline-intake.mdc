@@ -1,0 +1,19 @@
+---
+description: Process root kaggle intake files
+globs: kaggle_intake/**/*.md
+alwaysApply: false
+---
+
+# Root Kaggle Intake
+
+- Files in root `kaggle_intake/` are task intake files for the whole workspace.
+- Treat them as starting points for new Kaggle research, not as archived project baselines.
+- Extract competition links, user notes, and extra sources first.
+- Update root memory docs before deep implementation work:
+  - `USER_PROMPTS_LOG.md`
+  - `RESEARCH_JOURNAL.md`
+- Route engineering work to `ML in Math/` and math/theory work to `Math_Hypothese_AutoCheck_Witch_Agents/`.
+- Never confuse this folder with `ML in Math/baseline/`.
+
+Example:
+- `kaggle_intake/2026-03-12_new-competition.md` -> build a problem brief, source list, and next-step plan.

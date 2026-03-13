@@ -1,0 +1,16 @@
+---
+description: Kaggle research discipline for ML in Math
+globs: "ML in Math/**/*"
+alwaysApply: false
+---
+
+# ML in Math Research
+
+- Use `ML in Math/` as the engineering workspace for Kaggle solver development and experiments.
+- Read project docs before major edits, especially navigation, hypotheses, and analysis docs.
+- Preserve the distinction between code, experiment logs, and narrative conclusions.
+- When experiments change conclusions, sync the relevant docs in that project, not just code.
+- Treat `ML in Math/baseline/` as project reference material unless the task explicitly requires changing it.
+
+Example:
+- New beam experiment -> update logs/results workflow and the related hypothesis status if evidence is strong.
