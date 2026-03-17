@@ -1,25 +1,26 @@
-# Kaggle Intake (root)
+﻿# Kaggle Intake (root)
 
 Эта папка предназначена для **новых входных задач** на уровне всего workspace.
 
-Пользователь кладёт сюда markdown-файл со ссылками на Kaggle competition и при необходимости с короткими заметками. После этого агент должен:
+Пользователь кладёт сюда markdown-файл со ссылками на Kaggle competition и, при необходимости, с краткими заметками.
+
+После этого root-level агент должен:
 
 1. прочитать файл;
 2. извлечь ссылки и контекст;
 3. зафиксировать задачу в корневой памяти;
-4. собрать источники;
-5. распределить дальнейшую работу между:
-   - `ML in Math/`
-   - `Math_Hypothese_AutoCheck_Witch_Agents/`
+4. собрать начальный набор источников;
+5. выбрать или создать **изолированный подпроект**;
+6. делегировать локальную работу его собственной мультиагентной команде.
 
 Важно:
 
-- эта папка **не заменяет** `ML in Math/baseline/`;
-- `ML in Math/baseline/` остаётся проектным архивом и референсом pancake-проекта;
-- корневой `kaggle_intake/` — это intake новых задач для всей агентной системы.
+- эта папка **не заменяет** локальные `baseline/` и локальные data folders подпроектов;
+- `CayleyPy_Pancake/` остаётся engineering reference-проектом, но не является обязательной целью для любой новой Kaggle-задачи;
+- корневой `kaggle_intake/` - это intake новых задач для всей агентной системы.
 
 См. также:
 
-- `../BASELINE_INTAKE_SPEC.md`
-- `../KAGGLE_AUTONOMOUS_WORKFLOW.md`
-- `../SOURCE_COLLECTION_POLICY.md`
+- `../rules/workflows/BASELINE_INTAKE_SPEC.md`
+- `../rules/workflows/KAGGLE_AUTONOMOUS_WORKFLOW.md`
+- `../rules/workflows/SOURCE_COLLECTION_POLICY.md`

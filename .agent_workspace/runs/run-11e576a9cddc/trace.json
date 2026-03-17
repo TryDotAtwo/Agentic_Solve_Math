@@ -1,0 +1,17 @@
+{
+  "run_id": "run-11e576a9cddc",
+  "handoff_id": "handoff-cf3d1aaadd64",
+  "status": "dry_run",
+  "target_agent_id": "subproject.CayleyPy_444_Cube.commander",
+  "artifacts": [
+    "handoff.json",
+    "task_request.json",
+    "routing_decision.json",
+    "research_plan.json",
+    "execution_record.json"
+  ],
+  "events": [
+    "prepared",
+    "execution_dry_run"
+  ]
+}

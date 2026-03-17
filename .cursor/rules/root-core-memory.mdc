@@ -1,15 +1,12 @@
----
+﻿---
 description: Root memory and prompt logging
 alwaysApply: true
 ---
 
 # Root Memory
 
-- For every substantial user request, update `USER_PROMPTS_LOG.md`.
-- Keep the user's wording as close to the original as practical.
+- For every substantial user request, update `rules/memory/USER_PROMPTS_LOG.md`.
 - Record major session decisions, files read, and outcomes in `RESEARCH_JOURNAL.md`.
-- When work spans both child projects, explicitly note the routing decision in root docs.
+- If multi-agent coordination matters, update `rules/memory/AGENT_INTERACTIONS_LOG.md`.
+- Keep root memory about global coordination, not local project internals.
 - Prefer traceability over brevity when context may matter for future research writing.
-
-Example:
-- New Kaggle task arrives -> log the request in `USER_PROMPTS_LOG.md` before deeper execution.

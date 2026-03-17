@@ -1,0 +1,7 @@
+{
+  "target_kind": "existing_subproject",
+  "target_name": "CayleyPy_444_Cube",
+  "target_agent_id": "subproject.CayleyPy_444_Cube.commander",
+  "reason": "Explicit subproject handoff",
+  "requires_approval": false
+}

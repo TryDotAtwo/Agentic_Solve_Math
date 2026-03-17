@@ -1,0 +1,21 @@
+{
+  "run_id": "run-fc8dc0e0c870",
+  "handoff_id": "handoff-0ce376ba0f65",
+  "project_name": "CayleyPy_444_Cube",
+  "mode": "legacy",
+  "command": [
+    "C:\\Users\\Иван Литвак\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+    "D:\\Agentic_Solve_Math\\CayleyPy_444_Cube\\main.py",
+    "--no-submit"
+  ],
+  "status": "dry_run",
+  "started_at": "2026-03-17T17:23:07Z",
+  "finished_at": "2026-03-17T17:23:07Z",
+  "exit_code": null,
+  "stdout_artifact": null,
+  "stderr_artifact": null,
+  "notes": [
+    "Project-local main.py is not yet root-handoff aware.",
+    "Default launch is safety-biased and disables Kaggle submit."
+  ]
+}

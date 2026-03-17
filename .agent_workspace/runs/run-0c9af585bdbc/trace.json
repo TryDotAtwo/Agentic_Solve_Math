@@ -1,0 +1,17 @@
+{
+  "run_id": "run-0c9af585bdbc",
+  "handoff_id": "handoff-0c5d04bb7dea",
+  "status": "completed",
+  "target_agent_id": "subproject.CayleyPy_444_Cube.commander",
+  "artifacts": [
+    "handoff.json",
+    "task_request.json",
+    "routing_decision.json",
+    "research_plan.json",
+    "delegation_result.json"
+  ],
+  "events": [
+    "prepared",
+    "result_recorded:completed"
+  ]
+}

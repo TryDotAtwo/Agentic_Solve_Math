@@ -1,0 +1,18 @@
+{
+  "plan_id": "plan-feafd8344737",
+  "research_questions": [
+    "Smoke-validate root handoff lifecycle"
+  ],
+  "deliverables": [
+    "research_summary",
+    "handoff_package"
+  ],
+  "evidence_requirements": [
+    "official_competition_materials",
+    "paper_and_repo_scan"
+  ],
+  "stop_conditions": [
+    "escalate_on_policy_boundary",
+    "escalate_on_missing_context"
+  ]
+}

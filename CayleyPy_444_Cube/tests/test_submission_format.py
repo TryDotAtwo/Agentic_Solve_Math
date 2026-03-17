@@ -7,8 +7,8 @@ def test_dummy_submission_schema_ok() -> None:
     """Smoke test: a minimal dummy submission passes local validation."""
     df = pd.DataFrame(
         {
-            "id": [1, 2, 3],
-            "solution": ["Rw U2", "Lw' F2", ""],
+            "initial_state_id": [0, 1, 2],
+            "path": ["f1", "-d3.-r3", ""],
         }
     )
 

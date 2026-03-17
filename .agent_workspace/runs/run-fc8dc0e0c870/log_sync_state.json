@@ -1,0 +1,5 @@
+{
+  "events": [
+    "execution:dry_run"
+  ]
+}

@@ -2,6 +2,20 @@
 
 > **Status:** draft, based on assumptions.  
 > All items marked **TODO** or **ASSUMPTION** must be verified against the official Kaggle page when available.
+>
+> **Current hard interface contract (for code and autosubmit)**
+>
+> - Competition slug used in code: `cayleypy-444-cube` (can be overridden via `--competition` CLI флага или env `KAGGLE_COMPETITION`; см. `submission/autosubmit.py`).  
+> - Minimal submission schema, на которой завязан валидатор и автосабмит:
+>   - колонка `id` (целочисленный идентификатор экземпляра, без пропусков и дубликатов);
+>   - колонка `solution` (строка с последовательностью ходов, допускается пустая строка как \"нет решения\").  
+> - Любые дополнительные столбцы (например, `score_estimate`, `method`) считаются **внутренними** и должны быть отброшены перед финальным Kaggle‑сабмитом, если соревнование явно не разрешает их в submission‑файле.
+>
+> Эти пункты задают **жёсткий интерфейс** между кодом генерации `submission.csv`, локальным валидатором и модулем автосабмита. При первом ручном чтении официальной страницы соревнования человек‑оператор должен:
+>
+> - подтвердить или скорректировать competition slug;
+> - проверить, что Kaggle действительно ожидает ровно столбцы `id` и `solution` (или явно задать отличия);
+> - при расхождениях обновить как этот документ, так и `submission/autosubmit.py` и тест `tests/test_submission_format.py`.
 
 ### 1. Problem brief
 

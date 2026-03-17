@@ -64,45 +64,45 @@ def validate_submission_schema(df: pd.DataFrame) -> None:
     Validate that the DataFrame matches the expected submission schema.
 
     Expected minimal columns:
-    - id (integer-like, unique)
-    - solution (string-like)
+    - initial_state_id (integer-like, unique, non-null)
+    - path (string-like, non-null; empty strings allowed)
 
     Raises ValueError on problems.
     """
-    missing = [c for c in ("id", "solution") if c not in df.columns]
+    missing = [c for c in ("initial_state_id", "path") if c not in df.columns]
     if missing:
         _log_event("schema_validation_failed", reason="missing_columns", missing=missing)
         raise ValueError(f"Submission is missing required columns: {missing}")
 
-    if df["id"].isnull().any():
+    if df["initial_state_id"].isnull().any():
         _log_event("schema_validation_failed", reason="null_ids")
-        raise ValueError("Submission contains null values in 'id' column.")
+        raise ValueError("Submission contains null values in 'initial_state_id' column.")
 
-    if df["id"].duplicated().any():
+    if df["initial_state_id"].duplicated().any():
         _log_event("schema_validation_failed", reason="duplicate_ids")
-        raise ValueError("Submission has duplicated 'id' values.")
+        raise ValueError("Submission has duplicated 'initial_state_id' values.")
 
     # Basic integer-like check: try to cast to int without changing the values.
     try:
-        ids_as_int = df["id"].astype("int64")
+        ids_as_int = df["initial_state_id"].astype("int64")
     except Exception:
         _log_event("schema_validation_failed", reason="id_not_integer_like")
-        raise ValueError("Column 'id' must be integer-like.")
-    if (ids_as_int.astype(str) != df["id"].astype(str)).any():
+        raise ValueError("Column 'initial_state_id' must be integer-like.")
+    if (ids_as_int.astype(str) != df["initial_state_id"].astype(str)).any():
         # Very conservative check; if this fires, better to fix DataFrame upstream.
         _log_event("schema_validation_failed", reason="id_cast_mismatch")
-        raise ValueError("Column 'id' cannot be safely interpreted as integer ids.")
+        raise ValueError("Column 'initial_state_id' cannot be safely interpreted as integer ids.")
 
-    if df["solution"].isnull().any():
+    if df["path"].isnull().any():
         _log_event("schema_validation_failed", reason="null_solutions")
-        raise ValueError("Submission contains null values in 'solution' column.")
+        raise ValueError("Submission contains null values in 'path' column.")
 
     # Light sanity check: enforce string dtype for solution.
     try:
-        df["solution"].astype(str)
+        df["path"].astype(str)
     except Exception:
         _log_event("schema_validation_failed", reason="solution_not_string_like")
-        raise ValueError("Column 'solution' must be coercible to string.")
+        raise ValueError("Column 'path' must be coercible to string.")
 
     _log_event(
         "schema_validation_ok",
@@ -143,6 +143,14 @@ def _kaggle_submit_http(file_path: Path, competition: str, message: str, config_
         p = d / "kaggle.json"
         if p.exists():
             kaggle_json_path = p
+            break
+        # Fallback: browser often downloads as "kaggle (1).json"
+        for alt in ("kaggle (1).json", "kaggle(1).json"):
+            p2 = d / alt
+            if p2.exists():
+                kaggle_json_path = p2
+                break
+        if kaggle_json_path is not None:
             break
 
     if kaggle_json_path is None:

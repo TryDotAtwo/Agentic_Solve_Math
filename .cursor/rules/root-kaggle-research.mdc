@@ -1,16 +1,12 @@
----
-description: Kaggle research discipline for ML in Math
-globs: "ML in Math/**/*"
+﻿---
+description: Kaggle research discipline for the pancake reference project
+globs: "CayleyPy_Pancake/**/*"
 alwaysApply: false
 ---
 
-# ML in Math Research
+# CayleyPy Pancake Research
 
-- Use `ML in Math/` as the engineering workspace for Kaggle solver development and experiments.
-- Read project docs before major edits, especially navigation, hypotheses, and analysis docs.
-- Preserve the distinction between code, experiment logs, and narrative conclusions.
-- When experiments change conclusions, sync the relevant docs in that project, not just code.
-- Treat `ML in Math/baseline/` as project reference material unless the task explicitly requires changing it.
-
-Example:
-- New beam experiment -> update logs/results workflow and the related hypothesis status if evidence is strong.
+- Use `CayleyPy_Pancake/` only for pancake-specific work and for extracting reusable engineering patterns.
+- Keep local docs, code, experiments, and conclusions inside the project.
+- Do not treat this project as the universal execution layer for all competitions.
+- If a new competition needs active work, prefer a dedicated isolated subproject.

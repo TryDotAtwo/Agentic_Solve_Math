@@ -1,0 +1,85 @@
+{
+  "handoff_id": "handoff-0c5d04bb7dea",
+  "run_id": "run-0c9af585bdbc",
+  "created_at": "2026-03-17T13:48:25Z",
+  "requester_agent_id": "root.02_research_intelligence.head",
+  "target_agent_id": "subproject.CayleyPy_444_Cube.commander",
+  "task_request": {
+    "task_id": "task-958f39e17af7",
+    "task_type": "kaggle_research",
+    "source": "intake_file",
+    "objective": "Smoke-validate root handoff lifecycle",
+    "requested_by": "root.02_research_intelligence.head",
+    "intake_file": "kaggle_intake\\First_input.md",
+    "competition_links": [
+      "https://www.kaggle.com/competitions/cayleypy-christophers-jewel",
+      "https://www.kaggle.com/competitions/cayley-py-professor-tetraminx-solve-optimally",
+      "https://www.kaggle.com/competitions/cayleypy-ihes-cube",
+      "https://www.kaggle.com/competitions/cayley-py-444-cube",
+      "https://www.kaggle.com/competitions/cayleypy-glushkov",
+      "https://www.kaggle.com/competitions/CayleyPy-pancake",
+      "https://www.kaggle.com/competitions/cayley-py-megaminx",
+      "https://www.kaggle.com/competitions/cayleypy-rapapport-m2",
+      "https://www.kaggle.com/competitions/cayleypy-reversals",
+      "https://www.kaggle.com/competitions/cayley-py-555-cube",
+      "https://www.kaggle.com/competitions/cayley-py-666-cube",
+      "https://www.kaggle.com/competitions/cayley-py-777-cube",
+      "https://www.kaggle.com/competitions/cayleypy-transposons"
+    ],
+    "priorities": [],
+    "notes": []
+  },
+  "routing_decision": {
+    "target_kind": "existing_subproject",
+    "target_name": "CayleyPy_444_Cube",
+    "target_agent_id": "subproject.CayleyPy_444_Cube.commander",
+    "reason": "Explicit subproject handoff",
+    "requires_approval": false
+  },
+  "research_plan": {
+    "plan_id": "plan-feafd8344737",
+    "research_questions": [
+      "Smoke-validate root handoff lifecycle"
+    ],
+    "deliverables": [
+      "research_summary",
+      "handoff_package"
+    ],
+    "evidence_requirements": [
+      "official_competition_materials",
+      "paper_and_repo_scan"
+    ],
+    "stop_conditions": [
+      "escalate_on_policy_boundary",
+      "escalate_on_missing_context"
+    ]
+  },
+  "target_read_roots": [
+    "D:\\Agentic_Solve_Math\\CayleyPy_444_Cube",
+    "D:\\Agentic_Solve_Math\\CayleyPy_444_Cube\\.agent_workspace"
+  ],
+  "target_write_roots": [
+    "D:\\Agentic_Solve_Math\\CayleyPy_444_Cube\\.agent_workspace"
+  ],
+  "allowed_tools": [
+    "local_orchestrate",
+    "local_delegate"
+  ],
+  "callable_agents": [
+    "root.orchestrator",
+    "subproject.CayleyPy_444_Cube.01_source_intelligence.head",
+    "subproject.CayleyPy_444_Cube.02_problem_analysis.head",
+    "subproject.CayleyPy_444_Cube.03_data_and_parsing.head",
+    "subproject.CayleyPy_444_Cube.04_experimentation.head",
+    "subproject.CayleyPy_444_Cube.05_solver_engineering.head",
+    "subproject.CayleyPy_444_Cube.06_evaluation_and_submission.head",
+    "subproject.CayleyPy_444_Cube.07_editorial_and_history.head",
+    "subproject.CayleyPy_444_Cube.08_audit_and_validation.head"
+  ],
+  "shared_service_agents": [
+    "subproject.CayleyPy_444_Cube.01_source_intelligence.web_researcher",
+    "subproject.CayleyPy_444_Cube.01_source_intelligence.paper_researcher",
+    "subproject.CayleyPy_444_Cube.07_editorial_and_history.local_historian"
+  ],
+  "change_requests": []
+}

@@ -1,15 +1,12 @@
----
+﻿---
 description: Keep root documentation synchronized
 alwaysApply: true
 ---
 
 # Root Documentation Sync
 
-- If you create or substantially change root docs, check whether `DOCUMENTATION_INDEX.md` must be updated.
-- If the role of a child project changes, update `PROJECT_MAP.md` and `RESEARCH_SURVEY.md` when needed.
+- If you create or substantially change root docs, check whether `rules/core/DOCUMENTATION_INDEX.md` must be updated.
+- If root/project boundaries change, update `rules/core/PROJECT_MAP.md` and relevant architecture docs.
 - Distinguish facts, hypotheses, and decisions in root markdown docs.
 - After major work, ensure `RESEARCH_JOURNAL.md` reflects what changed and why.
 - Do not leave critical workflow knowledge only in chat if it should persist across sessions.
-
-Example:
-- New policy doc added -> add it to `DOCUMENTATION_INDEX.md`.
