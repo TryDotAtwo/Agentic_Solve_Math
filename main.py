@@ -8,6 +8,7 @@ The root level is responsible for:
 - parsing root-level Kaggle intake files;
 - delegating execution into local subproject entry points;
 - keeping the workspace readable and reproducible;
+- reading provider and launch policy from `runtime_config.toml`;
 - launching the live root multi-agent runtime when OpenAI bootstrap settings are present.
 
 Backwards compatibility:
@@ -16,7 +17,7 @@ Backwards compatibility:
 
 Default behavior:
 - `python main.py` launches the default root operator session if `OPENAI_API_KEY`
-  or a root `.env` file is present;
+  or another active provider from `runtime_config.toml` is bootstrap-ready;
 - the operator session starts the browser dashboard and the live root runtime
   under one terminal-controlled process;
 - otherwise it falls back to the root overview/CLI surface.

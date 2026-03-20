@@ -10,6 +10,7 @@ from pathlib import Path
 from .delegation import load_handoff_package
 from .model_policy import select_model_for_agent
 from .organization import AgentManifest, OrganizationModel, build_root_organization, build_subproject_organization
+from .provider_config import ResolvedProviderRuntime, resolve_provider_runtime
 
 
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
@@ -209,10 +210,16 @@ def _build_team_spec(
     manager_agent_id: str,
     orchestration_pattern: str,
     run_id: str | None = None,
+    provider_runtime: ResolvedProviderRuntime | None = None,
 ) -> RuntimeTeamSpec:
     metadata = _build_runtime_metadata(organization, run_id=run_id)
+    resolved_provider = provider_runtime or resolve_provider_runtime(organization.root)
     agents = tuple(
-        _runtime_agent_spec(manifest, metadata)
+        _runtime_agent_spec(
+            manifest,
+            metadata,
+            provider_runtime=resolved_provider,
+        )
         for manifest in organization.agents
     )
     return RuntimeTeamSpec(
@@ -227,13 +234,18 @@ def _build_team_spec(
     )
 
 
-def _runtime_agent_spec(manifest: AgentManifest, metadata: RuntimeMetadata) -> RuntimeAgentSpec:
+def _runtime_agent_spec(
+    manifest: AgentManifest,
+    metadata: RuntimeMetadata,
+    provider_runtime: ResolvedProviderRuntime,
+) -> RuntimeAgentSpec:
     policy = select_model_for_agent(
         agent_id=manifest.agent_id,
         scope=manifest.scope,
         department_key=manifest.department_key,
         rank=manifest.rank,
         shared_service=manifest.shared_service,
+        provider_runtime=provider_runtime,
     )
     return RuntimeAgentSpec(
         agent_id=manifest.agent_id,
@@ -261,16 +273,26 @@ def _runtime_agent_spec(manifest: AgentManifest, metadata: RuntimeMetadata) -> R
     )
 
 
-def build_root_runtime_spec(root: Path, run_id: str | None = None) -> RuntimeTeamSpec:
+def build_root_runtime_spec(
+    root: Path,
+    run_id: str | None = None,
+    provider_runtime: ResolvedProviderRuntime | None = None,
+) -> RuntimeTeamSpec:
     return _build_team_spec(
         build_root_organization(root),
         manager_agent_id="root.orchestrator",
         orchestration_pattern="handoffs_plus_shared_tools",
         run_id=run_id,
+        provider_runtime=provider_runtime,
     )
 
 
-def build_subproject_runtime_spec(root: Path, project_name: str, run_id: str | None = None) -> RuntimeTeamSpec:
+def build_subproject_runtime_spec(
+    root: Path,
+    project_name: str,
+    run_id: str | None = None,
+    provider_runtime: ResolvedProviderRuntime | None = None,
+) -> RuntimeTeamSpec:
     if run_id:
         package = load_handoff_package(root, run_id)
         expected = f"subproject.{project_name}.commander"
@@ -281,6 +303,7 @@ def build_subproject_runtime_spec(root: Path, project_name: str, run_id: str | N
         manager_agent_id=f"subproject.{project_name}.commander",
         orchestration_pattern="local_handoffs_plus_shared_tools",
         run_id=run_id,
+        provider_runtime=provider_runtime,
     )
 
 
@@ -357,6 +380,17 @@ def instantiate_agents_sdk_bundle(
         if handoffs:
             kwargs["handoffs"] = handoffs
         agent = agent_cls(**kwargs)
+        for attr_name, attr_value in (
+            ("agent_id", spec.agent_id),
+            ("department_key", spec.department_key),
+            ("scope", spec.scope),
+            ("rank", spec.rank),
+            ("preferred_model", kwargs["model"]),
+        ):
+            try:
+                setattr(agent, attr_name, attr_value)
+            except Exception:
+                continue
         cache[key] = agent
         return agent
 

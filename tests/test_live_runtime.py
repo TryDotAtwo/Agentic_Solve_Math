@@ -16,9 +16,13 @@ from workspace_orchestrator.live_runtime import (
     _build_root_extra_tools_by_agent_id,
     _build_subproject_extra_tools_by_agent_id,
     LiveRuntimeError,
-    ensure_openai_api_key,
     run_root_orchestrator,
     run_subproject_commander,
+)
+from workspace_orchestrator.provider_config import (
+    DEFAULT_OPENROUTER_FREE_MODELS,
+    activate_provider_runtime,
+    resolve_provider_runtime,
 )
 
 
@@ -144,44 +148,59 @@ def _install_fake_agents_sdk(monkeypatch):
     return FakeRunner
 
 
-def test_ensure_openai_api_key_reads_root_env_file(tmp_path: Path, monkeypatch) -> None:
+def test_resolve_provider_runtime_reads_root_env_file(tmp_path: Path, monkeypatch) -> None:
     root = _prepare_root(tmp_path)
     (root / ".env").write_text("OPENAI_API_KEY=sk-test-key\n", encoding="utf-8")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    key = ensure_openai_api_key(root)
+    runtime = resolve_provider_runtime(root)
 
-    assert key == "sk-test-key"
-    assert os.environ["OPENAI_API_KEY"] == "sk-test-key"
+    assert runtime.provider_id == "openai"
+    assert runtime.api_key == "sk-test-key"
+    assert runtime.route_label == "openai"
 
 
-def test_ensure_openai_api_key_sets_google_base_url_for_google_style_openai_key(
+def test_resolve_provider_runtime_sets_google_route_for_google_style_openai_key(
     tmp_path: Path, monkeypatch
 ) -> None:
     root = _prepare_root(tmp_path)
     (root / ".env").write_text("OPENAI_API_KEY=AIzaSy-test-google-key\n", encoding="utf-8")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
 
-    key = ensure_openai_api_key(root)
+    runtime = resolve_provider_runtime(root)
 
-    assert key == "AIzaSy-test-google-key"
-    assert os.environ["OPENAI_BASE_URL"] == "https://generativelanguage.googleapis.com/v1beta/openai/"
+    assert runtime.api_key == "AIzaSy-test-google-key"
+    assert runtime.base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
+    assert runtime.route_label == "google_openai_compatible"
 
 
-def test_ensure_openai_api_key_accepts_google_api_key(tmp_path: Path, monkeypatch) -> None:
+def test_resolve_provider_runtime_accepts_google_api_key(tmp_path: Path, monkeypatch) -> None:
     root = _prepare_root(tmp_path)
     (root / ".env").write_text("GOOGLE_API_KEY=goog-test-key\n", encoding="utf-8")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
 
-    key = ensure_openai_api_key(root)
+    runtime = resolve_provider_runtime(root)
 
-    assert key == "goog-test-key"
-    assert os.environ["OPENAI_API_KEY"] == "goog-test-key"
-    assert os.environ["OPENAI_BASE_URL"] == "https://generativelanguage.googleapis.com/v1beta/openai/"
+    assert runtime.api_key == "goog-test-key"
+    assert runtime.base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
+    assert runtime.route_label == "google_openai_compatible"
+
+
+def test_activate_provider_runtime_restores_environment_after_close(tmp_path: Path, monkeypatch) -> None:
+    root = _prepare_root(tmp_path)
+    (root / ".env").write_text("OPENAI_API_KEY=sk-test-key\n", encoding="utf-8")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://old.example/v1")
+
+    with activate_provider_runtime(root) as session:
+        assert session.runtime.provider_id == "openai"
+        assert os.environ["OPENAI_API_KEY"] == "sk-test-key"
+        assert "OPENAI_BASE_URL" not in os.environ
+
+    assert "OPENAI_API_KEY" not in os.environ
+    assert os.environ["OPENAI_BASE_URL"] == "https://old.example/v1"
 
 
 def test_run_root_orchestrator_uses_fake_sdk_and_persistent_session(
@@ -204,14 +223,21 @@ def test_run_root_orchestrator_uses_fake_sdk_and_persistent_session(
     assert summary.session_db_path == str(root / ".agent_workspace" / "sessions" / "root_sessions.sqlite")
     assert summary.entry_agent_id == "root.orchestrator"
     assert summary.model == "gpt-5.2"
+    assert summary.provider_id == "openai"
+    assert summary.provider_route == "openai"
     status_payload = json.loads(
         (root / ".agent_workspace" / "runtime" / "root_runtime_status.json").read_text(encoding="utf-8")
     )
     assert status_payload["status"] == "succeeded"
     assert status_payload["session_id"] == "root-session"
+    assert status_payload["provider_id"] == "openai"
+    assert status_payload["event_count"] >= 2
     assert fake_runner.last_call["session"].db_path == str(
         root / ".agent_workspace" / "sessions" / "root_sessions.sqlite"
     )
+    runtime_events = (root / ".agent_workspace" / "runtime" / "root_runtime_events.jsonl").read_text(encoding="utf-8")
+    assert "root_session_started" in runtime_events
+    assert "root_session_completed" in runtime_events
     tool_names = {getattr(tool, "__name__", tool.__class__.__name__) for tool in fake_runner.last_call["agent"].tools}
     assert "parse_latest_intake" in tool_names
     assert "build_handoff" in tool_names
@@ -238,8 +264,12 @@ def test_run_subproject_commander_writes_subproject_result(tmp_path: Path, monke
     assert summary.run_id == run_id
     assert summary.session_db_path == str(root / ".agent_workspace" / "sessions" / "subproject_sessions.sqlite")
     assert summary.model == "gpt-5.2"
+    assert summary.provider_id == "openai"
     assert payload["status"] == "completed"
     assert payload["summary"] == "Subproject fixture completed."
+    runtime_events = (root / ".agent_workspace" / "runtime" / "root_runtime_events.jsonl").read_text(encoding="utf-8")
+    assert "subproject_session_started" in runtime_events
+    assert "subproject_result_recorded" in runtime_events
 
 
 def test_history_agents_receive_acl_bounded_operational_tools(tmp_path: Path, monkeypatch) -> None:
@@ -341,3 +371,40 @@ def test_run_root_orchestrator_wraps_quota_errors_with_friendly_message(
         assert "quota" in str(exc).lower()
     else:
         raise AssertionError("Expected a friendly LiveRuntimeError for quota failures.")
+
+
+def test_run_root_orchestrator_uses_curated_openrouter_intersection_for_free_pool(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root = _prepare_root(tmp_path)
+    (root / ".env").write_text("OPENROUTER_API_KEY=or-test-key\n", encoding="utf-8")
+    (root / "runtime_config.toml").write_text(
+        """[bootstrap]
+active_provider = "openrouter"
+""",
+        encoding="utf-8",
+    )
+    _install_fake_agents_sdk(monkeypatch)
+    monkeypatch.setattr(
+        "workspace_orchestrator.provider_config.discover_openrouter_free_models",
+        lambda url, timeout=10.0: tuple(reversed(DEFAULT_OPENROUTER_FREE_MODELS))
+        + ("external/provider-only:free",),
+    )
+
+    summary = run_root_orchestrator(
+        root,
+        prompt="Start the root orchestration cycle.",
+        session_id="root-openrouter-session",
+        auto_install=False,
+        provider="openrouter",
+    )
+
+    assert summary.final_output == "Root fixture completed."
+    assert summary.provider_id == "openrouter"
+    assert summary.provider_route == "openrouter"
+    assert summary.model == "meta-llama/llama-3.3-70b-instruct:free"
+    status_payload = json.loads(
+        (root / ".agent_workspace" / "runtime" / "root_runtime_status.json").read_text(encoding="utf-8")
+    )
+    assert status_payload["provider_id"] == "openrouter"
+    assert status_payload["model"] == "meta-llama/llama-3.3-70b-instruct:free"

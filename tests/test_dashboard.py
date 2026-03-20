@@ -12,6 +12,7 @@ from workspace_orchestrator.handoff import (
     materialize_handoff_package,
 )
 from workspace_orchestrator.intake import parse_intake_file
+from workspace_orchestrator.runtime_events import append_runtime_event
 from workspace_orchestrator.runs import ensure_run_dir, write_json
 
 
@@ -146,6 +147,35 @@ def test_build_dashboard_snapshot_summarizes_bootstrap_runs_and_logs(tmp_path: P
         summary="High-level narrative for the current phase is ready.",
         next_actions=("Align evidence excerpts",),
     )
+    append_runtime_event(
+        root,
+        event_type="handoff",
+        title="Root handoff",
+        summary="Root Orchestrator -> Subproject Commander",
+        scope="root",
+        session_id="root-main",
+        team_id="root:root",
+        agent_id="root.orchestrator",
+        agent_name="Root Orchestrator",
+        target_agent_id="subproject.CayleyPy_TestHarness.commander",
+        target_agent_name="Subproject Commander",
+        phase="handoff",
+    )
+    append_runtime_event(
+        root,
+        event_type="agent_message",
+        title="Subproject analysis",
+        summary="Dataset Parser extracted the primary schema and identified baseline gaps.",
+        scope="subproject",
+        session_id="CayleyPy_TestHarness-run-active",
+        team_id="subproject:CayleyPy_TestHarness",
+        run_id=active_run_id,
+        project_name="CayleyPy_TestHarness",
+        agent_id="subproject.CayleyPy_TestHarness.03_data_and_parsing.dataset_parser",
+        agent_name="Dataset Parser",
+        transcript="Dataset Parser: parsed the visible files and found missing baseline references.",
+        phase="agent_message",
+    )
 
     snapshot = build_dashboard_snapshot(root, run_limit=10, log_limit=5).to_dict()
 
@@ -164,8 +194,16 @@ def test_build_dashboard_snapshot_summarizes_bootstrap_runs_and_logs(tmp_path: P
     assert snapshot["runs"][1]["trace_status"] == "running"
     assert any(node["id"] == "root.orchestrator" for node in snapshot["graph"]["nodes"])
     assert snapshot["graph"]["edges"]
+    assert snapshot["subproject_focus"]["project_name"] == "CayleyPy_TestHarness"
+    assert snapshot["subproject_focus"]["graph"]["nodes"]
+    assert snapshot["subproject_focus"]["agent_count"] == 33
+    assert snapshot["team_bridge"]["project_name"] == "CayleyPy_TestHarness"
+    assert snapshot["team_bridge"]["source_agent_id"] == "root.02_research_intelligence.head"
+    assert snapshot["team_bridge"]["target_agent_id"] == "subproject.CayleyPy_TestHarness.commander"
     assert snapshot["milestones"][0]["title"] == "Prepared article milestone draft"
     assert snapshot["agents"][0]["memory_path"].endswith("memory.md")
+    assert snapshot["live_events"][0]["event_type"] == "agent_message"
+    assert snapshot["dialogue_feed"][0]["event_type"] == "agent_message"
     assert snapshot["logs"]["research_journal"][0]["title"].startswith("2026-03-20")
     assert snapshot["logs"]["agent_interactions"][0]["title"].startswith("2026-03-20")
     assert snapshot["logs"]["user_prompts"][0]["title"].startswith("2026-03-20")

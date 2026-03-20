@@ -1,5 +1,359 @@
 # Research Journal
 
+## 2026-03-20 | Session: Premium dashboard focus routing between topology and dialogue
+
+### Context
+
+After the topology/chat cleanup, the remaining opportunity was not structural but experiential:
+
+- the stage and the dialogue monitor were both readable;
+- however, they were still adjacent surfaces rather than one operator workflow.
+
+The premium UX goal was to let the selected dialogue actively drive what the operator sees on the graph stage.
+
+### Decisions
+
+1. Add a dedicated topology focus strip above the graph surface.
+2. Derive a dialogue-driven route focus from the selected thread:
+   - source agent;
+   - target agent;
+   - route type;
+   - event count;
+   - summary.
+3. Highlight the selected route directly on the graphs:
+   - in-team routes get an explicit focus line inside the relevant graph;
+   - cross-team routes intensify the bridge between root and subproject.
+4. Highlight the participating nodes themselves:
+   - source agent;
+   - target agent.
+5. Mark cross-team threads inside the dialogue list so the operator can spot inter-team coordination faster.
+
+### Implementation notes
+
+- Added `topology-focus` in `workspace_orchestrator/dashboard_assets/index.html`.
+- Extended `workspace_orchestrator/dashboard_assets/app_v3.js` with:
+  - `agentScope`
+  - `dialogueConsoleState`
+  - `buildDialogueFocusState`
+- `renderTopologyStage` now:
+  - reads the selected dialogue focus;
+  - renders a route summary card;
+  - highlights direct same-team routes;
+  - strengthens bridge rendering for cross-team focus.
+- `drawGraphElements` now marks source/target nodes and renders focus-route lines.
+- `workspace_orchestrator/dashboard_assets/app.css` now includes:
+  - topology focus strip styling;
+  - focus-route edge styling;
+  - focused node shells/halos;
+  - cross-team thread accents in the dialogue list.
+
+### Verification
+
+- `py -m pytest -q tests\test_dashboard.py tests\test_dashboard_server.py -p no:cacheprovider`
+- Result: `3 passed`
+- `py -m pytest -q tests -p no:cacheprovider`
+- Result: `67 passed`
+- `py main.py dashboard --json`
+- Result: snapshot built successfully
+
+### Outcome
+
+The dashboard now behaves more like a real command observatory:
+
+- choose a thread;
+- see the responsible route light up on the stage;
+- inspect the exact dialogue that explains the route;
+- keep the surrounding inspector/activity panels as secondary evidence rather than the main navigation path.
+
+---
+
+## 2026-03-20 | Session: Topology-stage cleanup and admin-style dialogue monitor
+
+### Context
+
+The previous dashboard pass improved observability, but the operator still reported two UX problems:
+
+- the stage composition was visually awkward because the bridge area behaved like a third card instead of a natural connection between two teams;
+- dialogue browsing still did not feel like an administrator observing live chat exchanges.
+
+The requested direction was explicit:
+
+- keep the circular graph language;
+- connect the root team and the focused subproject team with simple line-like links;
+- place the message trace directly below the graph stage;
+- make the lower console resemble an admin view of chats.
+
+### Decisions
+
+1. Keep one full-width `Topology Stage` with two circular graph clusters:
+   - root on the left;
+   - active subproject on the right.
+2. Remove the heavy bridge-card metaphor from the layout.
+3. Render the cross-team bridge as a direct line between the participating agents, matching the visual grammar of graph edges.
+4. Move `Dialogue Trace` immediately below the topology section in document order.
+5. Reframe dialogue browsing as a threaded admin monitor:
+   - compact thread list;
+   - selected-thread detail;
+   - chat-style bubbles for individual events.
+6. Add small overflow safeguards for long labels so project names stop breaking the pulse cards.
+
+### Implementation notes
+
+- Reordered `workspace_orchestrator/dashboard_assets/index.html` so the operator reads:
+  - topology;
+  - dialogue;
+  - inspector / activity / mission.
+- Simplified `workspace_orchestrator/dashboard_assets/app.css`:
+  - replaced old bridge-rail styles with `topology-toolbar` and `topology-surface`;
+  - added chat bubble styling for `message`, `handoff`, and `tool` events;
+  - made the supporting panels denser and less oversized.
+- Updated `workspace_orchestrator/dashboard_assets/app_v3.js`:
+  - bridge is now rendered as a direct line between teams;
+  - dialogue titles use stable ASCII arrows;
+  - transcript entries expose a visible event kind in each chat bubble.
+- Tightened HTTP asset assertions in `tests/test_dashboard_server.py`.
+
+### Verification
+
+- `py -m pytest -q tests\test_dashboard.py tests\test_dashboard_server.py -p no:cacheprovider`
+- Result: `3 passed`
+- `py main.py dashboard --json`
+- Result: snapshot built successfully against the live workspace
+
+### Outcome
+
+The dashboard now follows a clearer operator narrative:
+
+- first understand the two active teams and their current bridge;
+- then inspect the conversations that explain the work;
+- only after that drill into supporting panels such as inspector, activity, mission, milestones, and runs.
+
+---
+
+## 2026-03-20 | Session: Dashboard layout densification and side-by-side topology stage
+
+### Context
+
+After the previous pass the graph rendering itself was already visually strong, but the operator still reported UX friction:
+
+- the page felt too large and too sparse;
+- the two team graphs needed to be visible together;
+- the relation between the root team and the active subproject team was still implicit;
+- dialogue browsing still behaved like a tall card feed instead of a usable inspection console.
+
+### Decisions
+
+1. Replace the separate graph panels with one shared `Topology Stage`.
+2. Put the two graphs side by side on desktop:
+   - root graph on the left;
+   - active subproject graph on the right.
+3. Add an explicit `team_bridge` payload in the dashboard snapshot so the UI can show:
+   - source agent;
+   - target agent;
+   - current run / handoff context;
+   - bridge summary.
+4. Reduce the visual scale of the dashboard:
+   - smaller hero;
+   - denser panel spacing;
+   - smaller cards and graph stages.
+5. Replace the dialogue wall with a split-view console:
+   - filter chips for `all / messages / handoffs / tools`;
+   - compact event list;
+   - detail pane for the selected dialogue item.
+
+### Implementation notes
+
+- Extended `workspace_orchestrator/dashboard.py` with `team_bridge`.
+- Reworked `workspace_orchestrator/dashboard_assets/index.html` into:
+  - `Topology Stage`
+  - `Dialogue Trace` split-view
+  - denser panel ordering
+- Updated `workspace_orchestrator/dashboard_assets/app_v3.js` with:
+  - `renderTeamBridge`
+  - `renderDialogueConsole`
+  - dialogue selection/filter state
+- Rebalanced `workspace_orchestrator/dashboard_assets/app.css` around:
+  - side-by-side graphs;
+  - bridge rail;
+  - denser typography and spacing.
+
+### Verification
+
+- `py -m pytest -q tests\test_dashboard.py tests\test_dashboard_server.py -p no:cacheprovider`
+- Result: `3 passed`
+- `py -m pytest -q tests -p no:cacheprovider`
+- Result: `67 passed`
+
+### Outcome
+
+The dashboard now behaves more like an operator console:
+
+- two topologies are visible together;
+- the bridge between them is explicit;
+- dialogue inspection is faster and less scroll-heavy;
+- the overall page density is more appropriate for long observation sessions.
+
+---
+
+## 2026-03-20 | Session: OpenRouter free-pool hardening and dashboard radial graph restoration
+
+### Context
+
+The user reported two concrete regressions in the live root system:
+
+- the newer dashboard graph had lost the stronger visual form of the previous version;
+- a real `python main.py` launch failed with `Live runtime failed: Clarifai error: Failure`.
+
+The request also explicitly reaffirmed that all further development should remain test-driven.
+
+### Diagnosis
+
+#### Provider layer
+
+OpenRouter was configured with `refresh_free_models = true`, and the runtime refreshed the active free pool from the OpenRouter catalog. The implementation replaced the entire curated pool with the discovered catalog result.
+
+That meant:
+
+- root lost deterministic dependence on `runtime_config.toml`;
+- previously uncurated free models could enter the pool;
+- the root orchestrator could land on a backend/model combination that had never been intentionally approved for the debug path.
+
+The observed failed run used:
+
+- provider: `openrouter`
+- root model: `arcee-ai/trinity-mini:free`
+- error: `Clarifai error: Failure`
+
+#### Dashboard layer
+
+The latest UI iteration preserved live observability but compressed the graphs into a flatter, less legible layout. The old radial command-stage geometry was visually stronger and made hierarchy easier to parse.
+
+### Decisions
+
+1. Keep TDD strict:
+   - add tests first for OpenRouter refresh behavior and dashboard asset shape.
+2. Harden OpenRouter free-pool refresh:
+   - catalog refresh now intersects with the curated pool from `runtime_config.toml`;
+   - runtime no longer replaces the curated pool with the full catalog.
+3. Tighten the default debug pool:
+   - remove `arcee-ai/trinity-large-preview:free`;
+   - remove `arcee-ai/trinity-mini:free`.
+4. Restore the radial graph form in the browser dashboard for both:
+   - root graph;
+   - active subproject graph.
+5. Expand the stage layout so graphs remain full-width while dialogue/activity/inspector panels stay readable below them.
+
+### Implementation notes
+
+- Updated `workspace_orchestrator/provider_config.py`:
+  - added curated catalog intersection logic;
+  - changed `free_model_source` to `catalog_intersection` for refreshed safe pools.
+- Updated `runtime_config.toml` to remove the `arcee-ai/trinity-*` variants from the default OpenRouter free pool.
+- Updated `workspace_orchestrator/dashboard_assets/app_v3.js`:
+  - restored a generalized radial graph layout via `computeRadialGraphLayout`;
+  - kept dual-graph rendering and live event surfaces.
+- Updated `workspace_orchestrator/dashboard_assets/app.css`:
+  - returned graphs to full-width stages;
+  - increased graph stage height;
+  - rebalanced dialogue/activity/inspector panel widths.
+
+### Verification
+
+- Targeted tests:
+  - `py -m pytest -q tests\test_provider_config.py tests\test_live_runtime.py tests\test_dashboard_server.py -p no:cacheprovider`
+  - Result: `18 passed`
+- Full root suite:
+  - `py -m pytest -q tests -p no:cacheprovider`
+  - Result: `67 passed`
+- Smoke checks:
+  - `py main.py provider-status --provider openrouter --json`
+  - `py main.py dashboard --json`
+
+### Live smoke result
+
+A short real OpenRouter smoke was retried after the fix.
+
+Observed result:
+
+- the root runtime no longer reproduced the earlier `Clarifai error: Failure`;
+- the root orchestrator resolved to `meta-llama/llama-3.3-70b-instruct:free`;
+- the next failure mode became quota/billing related rather than provider-backend instability.
+
+This means the architectural regression was fixed; the remaining blocker is external account availability.
+
+---
+
+## 2026-03-20 | Session: Live observability upgrade for root and subproject execution
+
+### Context
+
+The user reported that the browser dashboard looked visually stronger than before but still failed its real purpose:
+
+- the root graph was visible, but the active subproject graph was missing;
+- the operator could not understand the live execution flow;
+- there was no usable runtime transcript showing what agents were doing or saying.
+
+### Problem diagnosis
+
+The previous dashboard mostly aggregated archival data:
+
+- run folders in `.agent_workspace/runs/`;
+- root runtime status with only coarse start/finish fields;
+- root logs and milestone reports.
+
+That meant the UI had almost no canonical source for:
+
+- active agent transitions;
+- handoffs;
+- tool calls and outputs;
+- live subproject focus;
+- message-like runtime events.
+
+### Decisions
+
+1. Introduce a root-owned live event journal in `.agent_workspace/runtime/root_runtime_events.jsonl`.
+2. Extend `root_runtime_status.json` with active scope, active project, active agent, phase, last event, and event count.
+3. Instrument both root and subproject runtimes so the dashboard can observe:
+   - session start / completion;
+   - handoff package creation;
+   - subproject launches;
+   - milestone writes;
+   - private memory updates;
+   - subproject result recording.
+4. When the Agents SDK supports streaming events, consume semantic runtime events and record operator-visible excerpts.
+5. Redesign the dashboard into a dual-graph observability console:
+   - root graph;
+   - active subproject graph;
+   - execution pulse;
+   - live activity;
+   - dialogue trace.
+
+### Implementation notes
+
+- Added `workspace_orchestrator/runtime_events.py`.
+- Extended `workspace_orchestrator/runtime_state.py`.
+- Instrumented `workspace_orchestrator/live_runtime.py` with runtime event recording.
+- Attached runtime metadata to SDK agents in `workspace_orchestrator/openai_runtime.py`.
+- Expanded `workspace_orchestrator/dashboard.py` snapshot model with:
+  - `current_focus`
+  - `subproject_focus`
+  - `live_events`
+  - `dialogue_feed`
+- Upgraded frontend shell to a new asset bundle in `workspace_orchestrator/dashboard_assets/app_v3.js`.
+
+### Verification
+
+- `py -m pytest -q tests -p no:cacheprovider`
+- Result: `65 passed`
+- `py main.py dashboard --json`
+- Result: snapshot builds successfully with the new fields and focused subproject payload.
+
+### Remaining caveat
+
+The already existing runtime status file in the workspace was created before the richer observability fields existed, so the current snapshot still shows many `null` live fields until the next real `python main.py` launch rewrites them with the new instrumentation.
+
+---
+
 ## 2026-03-12 | Initial root survey
 
 ### Goal
@@ -1641,3 +1995,90 @@ OpenRouter тестовый режим включался, но рантайм �
 ### Verification
 
 - Unit tests: `19 passed` (по локальному `pytest` для затронутых модулей).
+
+---
+
+## 2026-03-20 | Session: multiprovider runtime config for OpenAI, OpenRouter, and g4f
+
+### Context
+
+The root runtime had accumulated provider logic in three different places:
+
+- `cli.py`
+- `live_runtime.py`
+- `model_policy.py`
+
+OpenRouter behaved as a bolt-on test mode, while the user now needed a clean architecture with:
+
+- OpenAI as the main path;
+- OpenRouter as a debug/free-model path;
+- g4f as a third backend option;
+- root config files instead of ad-hoc environment branching.
+
+### External research used
+
+- OpenAI Agents SDK model/provider docs:
+  - `https://openai.github.io/openai-agents-python/models/`
+- OpenRouter free-model routing and catalog docs:
+  - `https://openrouter.ai/docs/guides/routing/model-variants/free`
+  - `https://openrouter.ai/docs/api-reference/list-available-models`
+- g4f documentation and repository:
+  - `https://g4f.dev/docs/ready_to_use.html`
+  - `https://github.com/xtekky/gpt4free`
+
+### Decisions
+
+1. Introduce a canonical root config:
+   - `runtime_config.toml`
+2. Keep secrets outside the committed config:
+   - `.env`
+   - process environment
+3. Move provider resolution into a dedicated root module:
+   - `workspace_orchestrator/provider_config.py`
+4. Treat provider activation as a temporary launch-scoped concern:
+   - apply env only during the active run;
+   - restore env after completion;
+   - auto-stop locally started g4f services.
+5. Keep model policy provider-aware:
+   - OpenAI keeps role-aware GPT-5.2 / Codex / Mini tiers;
+   - OpenRouter uses deterministic per-agent assignment from a free pool;
+   - g4f uses a separate role-aware local model matrix.
+6. Keep `launch-openrouter-test` only as a compatibility shortcut on top of the new provider system.
+
+### Files created or updated
+
+- `runtime_config.toml`
+- `.env.example`
+- `workspace_orchestrator/provider_config.py`
+- `workspace_orchestrator/model_policy.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `workspace_orchestrator/dashboard.py`
+- `README.md`
+- `main.py`
+- `AGENTS.md`
+- `rules/core/PROJECT_MAP.md`
+- `rules/core/DOCUMENTATION_INDEX.md`
+- `rules/architecture/README.md`
+- `rules/architecture/MULTIPROVIDER_RUNTIME_CONFIG.md`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- Root test suite:
+  - `py -m pytest -q tests`
+  - Result: `64 passed`
+- Safe real-workspace smoke:
+  - `py main.py provider-status --json`
+  - `py main.py provider-status --provider openrouter --json`
+  - `py main.py provider-status --provider g4f --json`
+  - `py main.py runtime-summary --json`
+
+### Outcome
+
+- `python main.py` now remains the single root launcher, but provider selection is config-first.
+- OpenRouter and g4f are no longer special-case hacks inside the runtime.
+- The operator gets a readable provider inspection command and a canonical root config surface.
+- Secrets are no longer exposed by provider diagnostics.

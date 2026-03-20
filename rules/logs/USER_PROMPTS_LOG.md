@@ -17,6 +17,173 @@
 
 ---
 
+## 2026-03-20 | Prompt 030 | Russian
+
+### Original user request
+
+```text
+Кайф, го премиум UX
+```
+
+### Extracted requirements
+
+- Push the dashboard past the baseline cleanup into a more premium operator experience.
+- Strengthen the coupling between the graph stage and the dialogue monitor.
+- Improve visual focus, route legibility, and the feeling of observing a living multi-agent system.
+- Keep the work inside the root layer and continue TDD-first development.
+
+### Related outputs
+
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
+- `tests/test_dashboard_server.py`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+
+---
+
+## 2026-03-20 | Prompt 029 | Russian
+
+### Original user request
+
+```text
+Смотри как криво. Плюс лучше просто такие графи круглие и просто такие же полоски между ними, как и внутри графов. Это красиво будет. А ниже уже диалог трейс и текущие обмени сообщений. Что-то типа просмотра чатиков между пользователями у админа, смекаешь?
+```
+
+### Extracted requirements
+
+- Keep the attractive circular graph style for both teams.
+- Draw the cross-team relation as a simple line connection, visually similar to the internal graph edges.
+- Place the dialogue trace below the topology stage instead of letting supporting panels interrupt the reading flow.
+- Make message browsing feel like an admin chat-monitor view rather than a generic card feed.
+- Continue TDD-first while refining layout, readability, and operator comprehension.
+
+### Related outputs
+
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
+- `tests/test_dashboard_server.py`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+
+---
+
+## 2026-03-20 | Prompt 028 | Russian
+
+### Original user request
+
+```text
+Поправь верстку, вроде норм, но сделай 2 рядом графовые структуры агентов и связи между ними. В целом дизайн норм, но нужно понятнее разместить разделы и не так крупно. Как-то сделай диалоги между агентами удобно просматриваемыми. Подумай получше над дизайном, сама графика красивая, но именно UX и верстка хромает пока что
+```
+
+### Extracted requirements
+
+- Place the two agent graph structures side by side instead of forcing them into a looser stage flow.
+- Make the relation between the root team and the active subproject team explicit.
+- Reduce the overall visual scale and improve section placement.
+- Make agent dialogue browsing materially more convenient, not just prettier.
+- Keep the attractive graph rendering, but improve layout and UX around it.
+
+### Related outputs
+
+- `workspace_orchestrator/dashboard.py`
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
+- `tests/test_dashboard.py`
+- `tests/test_dashboard_server.py`
+- `README.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+
+---
+
+## 2026-03-20 | Prompt 027 | Russian
+
+### Original user request
+
+```text
+Прошлый граф красивее был - верни ту форму. Также пиши везде тесты. У нас разработка через тестирование.
+
+PS D:\Agentic_Solve_Math> & "C:/Users/Иван Литвак/AppData/Local/Programs/Python/Python311/python.exe" d:/Agentic_Solve_Math/main.py
+Agentic Solve Math - operator session
+dashboard_url: http://127.0.0.1:8765
+stop_hint: press Ctrl+C in this terminal to stop the root session and dashboard
+launch_error: Live runtime failed: Clarifai error: Failure
+PS D:\Agentic_Solve_Math>
+```
+
+### Extracted requirements
+
+- Restore the previous, more expressive graph form in the browser dashboard.
+- Keep development TDD-first and add/update tests alongside every meaningful change.
+- Investigate and fix the real launch failure seen during `python main.py`.
+- Preserve live observability while improving visual readability rather than reverting to a weaker dashboard.
+
+### Related outputs
+
+- `workspace_orchestrator/provider_config.py`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `runtime_config.toml`
+- `tests/test_provider_config.py`
+- `tests/test_live_runtime.py`
+- `tests/test_dashboard_server.py`
+- `rules/architecture/MULTIPROVIDER_RUNTIME_CONFIG.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `README.md`
+
+---
+
+## 2026-03-20 | Prompt 026 | Russian
+
+### Original user request
+
+```text
+PS D:\Agentic_Solve_Math> & "C:/Users/Иван Литвак/AppData/Local/Programs/Python/Python311/python.exe" d:/Agentic_Solve_Math/main.py
+Agentic Solve Math - operator session
+dashboard_url: http://127.0.0.1:8765
+stop_hint: press Ctrl+C in this terminal to stop the root session and dashboard
+scope: root
+team: root:root
+entry_agent: root.orchestrator
+session_id: root-main
+session_db_path: D:\Agentic_Solve_Math\.agent_workspace\sessions\root_sessions.sqlite
+provider: openrouter
+provider_route: openrouter
+model: arcee-ai/trinity-mini:free
+intake_file: D:\Agentic_Solve_Math\kaggle_intake\First_input.md
+final_output:
+
+Вот выше вывод в консоле
+
+Вижу, что работает, но не вижу процесс работ в дашборде. Там очень красив граф - факт, а вот еще же есть граф команды подпроекта, который активен.
+
+В целом круто, но над дашбордом поработай, чтобы пользователь всё видел и мог понимать процесс и контролировать его, по сути (вмешиваться он не может, а вот понимать всё происходящее, вплоть до диалогов между агентами - должен
+```
+
+### Extracted requirements
+
+- Improve the dashboard so the operator can observe real work instead of only static snapshots.
+- Show the active subproject team graph alongside the root graph.
+- Surface the live process clearly: active agent, current phase, and runtime changes.
+- Make agent-to-agent dialogue and coordination visible to the operator as much as the runtime allows.
+- Keep the interface read-only for the user, but highly informative.
+
+### Related outputs
+
+- `workspace_orchestrator/runtime_events.py`
+- `workspace_orchestrator/runtime_state.py`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/dashboard.py`
+- `workspace_orchestrator/dashboard_server.py`
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `README.md`
+
+---
+
 ## 2026-03-12 | Prompt 001 | Russian
 
 ### Оригинальный запрос пользователя
@@ -712,3 +879,65 @@ Ui и Ux очень плохи. Еще и реализация кривая - в
 - `workspace_orchestrator/model_policy.py` (`ASM_OPENROUTER_TEST_MODE`)
 - `workspace_orchestrator/live_runtime.py` (OpenRouter routing + MultiProvider unknown prefix handling)
 - `tests/test_openrouter_model_policy.py`
+
+---
+
+## 2026-03-20 | Prompt 025 | Russian
+
+### Original user request
+
+```text
+D:\Agentic_Solve_Math>python main.py launch-openrouter-test --max-turns 4 --json
+Traceback (most recent call last):
+  File "D:\Agentic_Solve_Math\main.py", line 31, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\Agentic_Solve_Math\workspace_orchestrator\cli.py", line 806, in main
+    return _launch_openrouter_test(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Agentic_Solve_Math\workspace_orchestrator\cli.py", line 572, in _launch_openrouter_test
+    return _launch_root(prompt, intake_file, None, session_id, max_turns, auto_install, as_json)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Agentic_Solve_Math\workspace_orchestrator\cli.py", line 515, in _launch_root
+    summary = run_root_orchestrator(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Agentic_Solve_Math\workspace_orchestrator\live_runtime.py", line 731, in run_root_orchestrator
+    ensure_openai_api_key(root)
+  File "D:\Agentic_Solve_Math\workspace_orchestrator\live_runtime.py", line 123, in ensure_openai_api_key
+    raise RuntimeError(
+RuntimeError: OPENROUTER_API_KEY is missing but ASM_OPENROUTER_TEST_MODE=1 is enabled. Put OPENROUTER_API_KEY into environment or root .env to run `launch-openrouter-test`.
+
+Я на опенроутер сделал пока что. Хочу чтобы был от опен аи один запуск и для дебаг мода опенроутер был, который для каждого агента свою модель бесплатную, чтоб бесплатное апи не перегружать. Список тут https://openrouter.ai/models?q=free
+
+Отдельно сделай и на g4f фреймворке тоже вариантик третий, чтоб можно было разное использовать. https://github.com/xtekky/gpt4free вот гитхаб фреймворка.
+
+По сути будет опен аи апи, опенроутер апи и g4f апи. Сделай всё архитектурно красиво и удобно. Запуск через мейн как и раньше, просто от флагов в конфиг файле зависит. Вообще удобные конфиги сделай в корне. Спасибо за твою работу
+```
+
+### Extracted requirements
+
+- Replace the ad-hoc OpenRouter test branch with a proper provider architecture.
+- Keep `python main.py` as the single root launch surface.
+- Support three provider modes:
+  - OpenAI API
+  - OpenRouter API
+  - g4f local/OpenAI-compatible route
+- Make provider selection config-driven from root files instead of fragile CLI-only toggles.
+- Keep a debug OpenRouter mode with per-agent free-model assignment.
+- Add a g4f-based third path that can be started and used from the same root launcher flow.
+- Preserve TDD, integration tests, root-only boundaries, and scientific traceability.
+
+### Related results
+
+- `runtime_config.toml`
+- `.env.example`
+- `workspace_orchestrator/provider_config.py`
+- `workspace_orchestrator/model_policy.py`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `workspace_orchestrator/dashboard.py`
+- `tests/test_provider_config.py`
+- `tests/test_live_runtime.py`
+- `tests/test_openrouter_model_policy.py`
+- `rules/architecture/MULTIPROVIDER_RUNTIME_CONFIG.md`
+- `README.md`

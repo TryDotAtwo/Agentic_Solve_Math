@@ -1,0 +1,79 @@
+[bootstrap]
+active_provider = "openrouter"
+
+[launch]
+max_turns = 12
+auto_install = true
+open_browser = true
+dashboard_host = "127.0.0.1"
+dashboard_port = 8765
+dashboard_run_limit = 12
+dashboard_log_limit = 8
+
+[providers.openai]
+api_key_env = "OPENAI_API_KEY"
+base_url = ""
+default_model = ""
+
+[providers.openai.models]
+manager = "gpt-5.2"
+research = "gpt-5.2"
+coding = "gpt-5.2-codex"
+audit = "gpt-5.2"
+history = "gpt-5-mini"
+support = "gpt-5-mini"
+
+[providers.openrouter]
+api_key_env = "OPENROUTER_API_KEY"
+base_url = "https://openrouter.ai/api/v1"
+model_strategy = "free_pool"
+default_model = ""
+refresh_free_models = true
+free_models_catalog_url = "https://openrouter.ai/api/v1/models"
+use_multi_provider = true
+openai_prefix_mode = "model_id"
+unknown_prefix_mode = "model_id"
+disable_tracing = true
+free_model_ids = [
+  "stepfun/step-3.5-flash:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "z-ai/glm-4.5-air:free",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "nvidia/nemotron-nano-12b-v2-vl:free",
+  "nvidia/nemotron-nano-9b-v2:free",
+  "qwen/qwen3-coder:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "openai/gpt-oss-120b:free",
+]
+
+[providers.openrouter.models]
+manager = "openrouter/auto"
+research = "openrouter/auto"
+coding = "openrouter/auto"
+audit = "openrouter/auto"
+history = "openrouter/auto"
+support = "openrouter/auto"
+
+[providers.g4f]
+transport = "local_openai_compatible"
+base_url = "http://127.0.0.1:1337/v1"
+healthcheck_url = "http://127.0.0.1:1337/v1/models"
+client_api_key = "g4f-local"
+server_api_key_env = "G4F_API_KEY"
+auto_start_server = true
+bind_host = "127.0.0.1"
+bind_port = 1337
+debug = false
+startup_timeout_seconds = 20.0
+provider = ""
+default_model = "gpt-4o-mini"
+disable_tracing = true
+
+[providers.g4f.models]
+manager = "gpt-4o-mini"
+research = "gpt-4o-mini"
+coding = "gpt-4o-mini"
+audit = "gpt-4o-mini"
+history = "gpt-4o-mini"
+support = "gpt-4o-mini"

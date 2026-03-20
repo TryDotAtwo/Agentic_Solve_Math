@@ -71,6 +71,10 @@ def _handler_factory(root: Path, run_limit: int, log_limit: int):
                 body, content_type = _asset_response(ASSETS_DIR / "app_v2.js")
                 self._send_bytes(body, content_type)
                 return
+            if parsed.path == "/assets/app_v3.js":
+                body, content_type = _asset_response(ASSETS_DIR / "app_v3.js")
+                self._send_bytes(body, content_type)
+                return
             if parsed.path == "/api/dashboard":
                 self._send_json(build_dashboard_snapshot(root, run_limit=run_limit, log_limit=log_limit).to_dict())
                 return

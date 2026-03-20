@@ -31,16 +31,29 @@ def test_dashboard_server_serves_html_and_json(tmp_path: Path) -> None:
             html = response.read().decode("utf-8")
             assert response.status == 200
             assert "Agentic Solve Math Observatory" in html
-            assert "/assets/app_v2.js" in html
+            assert "/assets/app_v3.js" in html
+            assert "topology-stage" in html
+            assert "topology-toolbar" in html
+            assert "topology-focus" in html
+            assert "topology-surface" in html
+            assert "dialogue-list" in html
+            assert "dialogue-detail" in html
+            assert "activity-feed" in html
 
         with urlopen(f"{handle.url}/api/dashboard", timeout=5) as response:
             payload = json.loads(response.read().decode("utf-8"))
             assert response.status == 200
             assert payload["root_team"]["manager"]["agent_id"] == "root.orchestrator"
 
-        with urlopen(f"{handle.url}/assets/app_v2.js", timeout=5) as response:
+        with urlopen(f"{handle.url}/assets/app_v3.js", timeout=5) as response:
             script = response.read().decode("utf-8")
             assert response.status == 200
             assert "renderDashboard" in script
+            assert "computeRadialGraphLayout" in script
+            assert "renderTopologyStage" in script
+            assert "buildDialogueThreads" in script
+            assert "buildDialogueFocusState" in script
+            assert "renderDialogueConsole" in script
+            assert "chat-bubble__kind" in script
     finally:
         handle.close()

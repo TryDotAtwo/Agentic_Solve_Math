@@ -9,6 +9,7 @@ Use this section as the current source of truth.
 - `../../README.md`
 - `../../AGENTS.md`
 - `../../main.py`
+- `../../runtime_config.toml`
 - `../../kaggle_intake/`
 - `../../workspace_orchestrator/`
 
@@ -42,6 +43,7 @@ Use this section as the current source of truth.
 - `../architecture/HIERARCHICAL_DEPARTMENT_MODEL.md`
 - `../architecture/ACCESS_CONTROL_AND_VISIBILITY_MODEL.md`
 - `../architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `../architecture/MULTIPROVIDER_RUNTIME_CONFIG.md`
 - `../organization/README.md`
 - `../organization/root_command/README.md`
 - `../organization/root_departments/README.md`

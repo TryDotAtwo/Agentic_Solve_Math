@@ -44,6 +44,7 @@ Static assets живут в:
 - `workspace_orchestrator/dashboard_assets/index.html`
 - `workspace_orchestrator/dashboard_assets/app.css`
 - `workspace_orchestrator/dashboard_assets/app.js`
+- `workspace_orchestrator/dashboard_assets/app_v3.js`
 
 Frontend обновляет snapshot polling-механизмом и не требует внешних JS/CSS dependencies.
 
@@ -191,3 +192,176 @@ The redesign remains covered by tests for:
 - milestone aggregation into dashboard snapshots;
 - dashboard HTTP serving of the active frontend bundle;
 - department-head runtime tooling.
+
+---
+
+## 2026-03-20 topology and chat refinement
+
+The next UX pass removed the remaining "third-card bridge" feeling and made the page read like an operator console instead of a visual demo.
+
+### Topology stage
+
+- Keep one full-width stage instead of three adjacent graph/bridge cards.
+- Render:
+  - root circular graph on the left;
+  - active subproject circular graph on the right;
+  - cross-team relation as a direct line between the participating agents.
+- Keep graph metadata above the stage in a compact toolbar rather than inside a large central card.
+
+### Dialogue monitor
+
+- `Dialogue Trace` now sits directly under the topology stage in the document flow.
+- The dialogue surface is explicitly admin-style:
+  - thread list on the left;
+  - selected conversation on the right;
+  - chat-like event bubbles for `message`, `handoff`, and `tool`.
+- The operator remains read-only, but can inspect the runtime more like a monitored communications system.
+
+### Layout rationale
+
+- The operator should first understand the active teams and their link.
+- The next natural question is "what are they saying to each other?", so dialogue must come immediately after topology.
+- Supporting panels such as inspector, live activity, and mission control can come afterward without interrupting the main story of the run.
+
+### Verification delta
+
+- `tests/test_dashboard_server.py` asserts the new topology and dialogue asset hooks.
+- `tests/test_dashboard.py` continues to verify that snapshot data provides the bridge and dialogue payloads required by the UI.
+
+---
+
+## 2026-03-20 premium route-focus upgrade
+
+The premium UX pass connected the two strongest dashboard surfaces:
+
+- topology;
+- dialogue.
+
+### New behavior
+
+- Selecting a dialogue thread now drives a route-focus state.
+- The topology stage shows a compact focus summary card above the graphs.
+- Same-team dialogue highlights a direct route inside the corresponding graph.
+- Cross-team dialogue intensifies the root-to-subproject bridge.
+- The participating source and target agents receive visual node emphasis.
+
+### Dialogue monitor implications
+
+- The thread list now distinguishes cross-team coordination more clearly.
+- The operator can move from a conversation to the exact route on the graph without mentally reconstructing the path.
+- This keeps the dashboard read-only while making it feel far more "live".
+
+### Verification delta
+
+- `tests/test_dashboard_server.py` now checks for:
+  - `topology-focus`
+  - `buildDialogueFocusState`
+- Full root dashboard tests continue to pass after the interaction upgrade.
+
+---
+
+## 2026-03-20 live observability upgrade
+
+The dashboard was upgraded from a mostly archival root-only surface into a live dual-scope operator console.
+
+### New root-owned observability sources
+
+- `.agent_workspace/runtime/root_runtime_events.jsonl`
+- richer `.agent_workspace/runtime/root_runtime_status.json`
+
+### Newly exposed operator surfaces
+
+1. `Execution Pulse`
+   - current runtime status;
+   - active scope;
+   - active project;
+   - current phase;
+   - latest recorded event.
+2. `Root Graph`
+   - root hierarchy and callable links.
+3. `Active Subproject Graph`
+   - focused subproject team topology derived from the active or latest run context.
+4. `Live Activity`
+   - ordered runtime event feed.
+5. `Dialogue Trace`
+   - operator-visible excerpts from:
+     - agent messages;
+     - handoffs;
+     - tool-mediated exchanges.
+
+### Runtime instrumentation model
+
+The live runtime now records root-owned events for:
+
+- root session start and completion;
+- subproject session start and completion;
+- handoff package creation;
+- milestone recording;
+- private memory notes;
+- historian notes;
+- subproject result recording;
+- streamed agent/tool/handoff/message events when the provider runtime exposes them.
+
+### Boundary guarantee
+
+The dashboard still respects the workspace invariant:
+
+- root reads only root-owned runtime state and root-discoverable subproject topology;
+- it does not become a write-channel into subprojects;
+- it does not bypass ACL by exposing hidden writable surfaces outside the owning agent dossiers.
+
+---
+
+## 2026-03-20 visual refinement update
+
+The observability console was refined after the operator reported that the newer graph layout had lost the stronger visual form of the previous version.
+
+### Decisions
+
+1. Restore the radial command-stage graph geometry for both:
+   - the root team;
+   - the active subproject team.
+2. Keep the newer live observability surfaces:
+   - execution pulse;
+   - dialogue trace;
+   - live activity;
+   - agent inspector;
+   - milestone stream.
+3. Move both graphs back to full-width stage panels so the operator can read hierarchy and call links without the layout collapsing.
+
+### Resulting UX intent
+
+- graph first, then explanation;
+- root team and active subproject team should both feel like command stages rather than small embedded cards;
+- the operator should be able to follow:
+  - who is active;
+  - which team is active;
+  - what the last visible exchange was;
+  - where the next milestone came from.
+
+---
+
+## 2026-03-20 layout and dialogue UX refinement
+
+Another operator pass highlighted that the visual language of the graphs was already strong, but the page composition still made the dashboard feel oversized and harder to scan than necessary.
+
+### Refinements
+
+1. Introduce a single `Topology Stage` panel:
+   - root graph on the left;
+   - active subproject graph on the right;
+   - a center bridge rail that explains the current cross-team handoff relationship.
+2. Reduce visual scale:
+   - smaller hero;
+   - denser cards and headings;
+   - shorter graph stages.
+3. Replace the previous dialogue wall with a split-view console:
+   - filter chips;
+   - compact event list;
+   - detail pane for the selected exchange.
+
+### UX intent
+
+- two graphs should be visible at once without forcing long scrolling;
+- the relationship between root orchestration and the active subproject should be explicit;
+- dialogues should be browsable like an operator console, not like a stack of oversized cards.

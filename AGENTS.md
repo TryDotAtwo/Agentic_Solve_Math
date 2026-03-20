@@ -63,6 +63,7 @@ Canonical дерево корневой документации теперь н
 - `README.md`
 - `AGENTS.md`
 - `main.py`
+- `runtime_config.toml`
 - `kaggle_intake/`
 - `rules/`
 - `workspace_orchestrator/`
@@ -144,6 +145,8 @@ Canonical дерево корневой документации теперь н
 Текущее состояние:
 
 - сохраняется совместимость с `CayleyPy_444_Cube/main.py`.
+- provider/launch policy задаётся через корневой `runtime_config.toml`;
+- секреты и ключи остаются в `.env` или process environment.
 
 Целевое состояние:
 

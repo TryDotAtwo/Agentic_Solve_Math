@@ -21,6 +21,7 @@
 ## Что находится в корне
 
 - `main.py` — единая root-level точка запуска.
+- `runtime_config.toml` — root-level provider and launch config for OpenAI / OpenRouter / g4f.
 - `AGENTS.md` — корневой контракт оркестратора.
 - `rules/` — canonical дерево корневой документации.
 - `kaggle_intake/` — canonical intake для новых Kaggle-задач.
@@ -68,10 +69,14 @@ Live root launch использует root-level multi-agent runtime из `works
 
 ### Минимальный запуск
 
-1. Скопировать `.env.example` в `.env`.
-2. Вставить `OPENAI_API_KEY`.
-3. При желании задать `ASM_OPENAI_MODEL` как глобальный override, но по умолчанию лучше оставить per-agent model policy.
-4. Запустить:
+1. Проверить `runtime_config.toml` и выбрать активный provider:
+   - `openai`
+   - `openrouter`
+   - `g4f`
+2. Скопировать `.env.example` в `.env`.
+3. Заполнить только секреты для выбранного provider.
+4. При желании задать `ASM_OPENAI_MODEL` как глобальный override, но по умолчанию лучше оставить per-agent model policy.
+5. Запустить:
 
 ```bash
 python main.py
@@ -94,9 +99,39 @@ python main.py runtime-summary --json
 
 По умолчанию runtime сам распределяет модели по ролям:
 
-- `gemini-2.5-flash` как текущий active tier для оркестрации, research, audit и support-ролей;
-- model policy остаётся role-aware и может быть переопределена позже без смены root launcher surface;
-- текущий runtime использует Google OpenAI-compatible route, если root bootstrap настроен через Google/Gemini key material.
+- для OpenAI:
+  - manager / research / audit: `gpt-5.2`
+  - coding: `gpt-5.2-codex`
+  - history / support: `gpt-5-mini`
+- для OpenRouter debug-path по умолчанию используется per-agent curated free-model pool;
+- для g4f используется локальный OpenAI-compatible route с отдельным config block;
+- model policy остаётся role-aware и provider-aware и может переопределяться без смены root launcher surface.
+
+### Provider config
+
+Canonical runtime config теперь живёт в `runtime_config.toml`.
+
+Он задаёт:
+
+- активный provider;
+- dashboard / launch параметры;
+- role-aware model tiers;
+- OpenRouter free-pool strategy;
+- g4f local API auto-start policy.
+
+Для OpenRouter root теперь использует safer refresh policy:
+
+- каталог free-моделей может только подтвердить доступность root-curated pool;
+- runtime больше не заменяет локальный curated pool всем каталогом целиком;
+- источником истины для отладки остаётся `runtime_config.toml`.
+
+Диагностические команды:
+
+```bash
+python main.py provider-status --json
+python main.py provider-status --provider openrouter --json
+python main.py provider-status --provider g4f --json
+```
 
 ## Browser Dashboard
 
@@ -113,11 +148,20 @@ python main.py dashboard
 Что показывает dashboard:
 
 - bootstrap/provider status;
-- graph корневой команды с агентами как вершинами и hierarchy/call links как связями;
+- dual graph view:
+  - root command graph and active subproject graph side by side;
+  - explicit bridge surface between the two teams;
+- live execution pulse с текущим scope, активным агентом, phase и last event;
+- live activity stream по runtime events из root-owned event journal;
+- dialogue console со split-view:
+  - compact event list;
+  - filter chips;
+  - detail preview for the selected exchange;
 - agent inspector с private memory, base instructions, rules и report surfaces выбранного агента;
 - milestone stream из user-facing отчётов глав департаментов;
 - последние root-owned handoff/run артефакты;
 - root runtime status из `.agent_workspace/runtime/root_runtime_status.json`;
+- root runtime events из `.agent_workspace/runtime/root_runtime_events.jsonl`;
 - root journals и user prompts;
 - карту подпроектов и session storage.
 
@@ -142,6 +186,7 @@ python main.py dashboard
 - `rules/architecture/ROOT_MULTIAGENT_ARCHITECTURE.md`
 - `rules/architecture/AGENT_PROTOCOLS.md`
 - `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `rules/architecture/MULTIPROVIDER_RUNTIME_CONFIG.md`
 - `rules/architecture/KAGGLE_RESEARCH_AGENT_BLUEPRINT.md`
 - `rules/architecture/MCP_SERVER_STRATEGY.md`
 - `rules/architecture/IMPLEMENTATION_ROADMAP.md`

@@ -16,8 +16,9 @@
         <div>
           <h1>Agentic Solve Math Control Atlas</h1>
           <p>
-            A browser control room for the root orchestration layer: agent graph,
-            private memory surfaces, milestone reports, run lifecycle, and research logs.
+            Root orchestration and active subproject execution in one operator surface:
+            side-by-side command graphs, a visible bridge between teams, live runtime pulse,
+            and readable agent dialogue traces.
           </p>
         </div>
         <div class="hero__status">
@@ -27,33 +28,92 @@
       </div>
     </header>
 
-    <main class="dashboard-grid">
-      <section class="panel panel--stage">
+    <main class="dashboard-grid dashboard-grid--observatory">
+      <section class="panel panel--wide panel--signal">
         <div class="panel__head">
           <div>
-            <h2>Team Graph</h2>
-            <p>Hierarchy at a glance, plus callable links for the selected agent.</p>
+            <h2>Execution Pulse</h2>
+            <p>Current phase, active scope, operator-visible heartbeat, and the latest runtime change.</p>
           </div>
-          <div id="graph-meta" class="toolbar-pills"></div>
         </div>
-        <div id="graph-surface" class="graph-surface"></div>
+        <div id="signal-grid" class="signal-grid"></div>
+      </section>
+
+      <section id="topology-stage" class="panel panel--wide panel--topology">
+        <div class="panel__head">
+          <div>
+            <h2>Topology Stage</h2>
+            <p>
+              Two circular team structures side by side with their current cross-team links drawn directly between
+              them.
+            </p>
+          </div>
+        </div>
+        <div class="topology-toolbar">
+          <div class="topology-meta">
+            <div class="topology-meta__label">Root Graph</div>
+            <div id="root-graph-meta" class="toolbar-pills"></div>
+          </div>
+          <div class="topology-meta topology-meta--center">
+            <div class="topology-meta__label">Bridge</div>
+            <div id="topology-bridge-meta" class="toolbar-pills"></div>
+          </div>
+          <div class="topology-meta topology-meta--align-end">
+            <div class="topology-meta__label">Active Subproject Graph</div>
+            <div id="subproject-graph-meta" class="toolbar-pills"></div>
+          </div>
+        </div>
+        <div id="topology-focus" class="topology-focus"></div>
+        <div id="topology-surface" class="topology-surface"></div>
+      </section>
+
+      <section class="panel panel--dialogue">
+        <div class="panel__head">
+          <div>
+            <h2>Dialogue Trace</h2>
+            <p>
+              A compact browsing console for agent-to-agent exchanges, handoffs, and tool-mediated discussion.
+            </p>
+          </div>
+        </div>
+        <div class="dialogue-console">
+          <div class="dialogue-console__tools">
+            <div id="dialogue-filters" class="toolbar-pills"></div>
+          </div>
+          <div class="dialogue-console__body">
+            <div id="dialogue-list" class="dialogue-list"></div>
+            <aside id="dialogue-detail" class="dialogue-detail">
+              <div class="empty-state">Choose a dialogue event to inspect its transcript and metadata.</div>
+            </aside>
+          </div>
+        </div>
       </section>
 
       <aside class="panel panel--inspector">
         <div class="panel__head">
           <div>
             <h2>Agent Inspector</h2>
-            <p>Private memory, base instructions, rules, and reachability for one agent.</p>
+            <p>Private memory, instructions, rules, writable surfaces, and allowed communication links.</p>
           </div>
         </div>
         <div id="agent-inspector" class="inspector"></div>
       </aside>
 
+      <section class="panel panel--activity">
+        <div class="panel__head">
+          <div>
+            <h2>Live Activity</h2>
+            <p>Recent runtime events across root and active subproject execution.</p>
+          </div>
+        </div>
+        <div id="activity-feed" class="feed-list"></div>
+      </section>
+
       <section class="panel panel--mission">
         <div class="panel__head">
           <div>
             <h2>Mission Control</h2>
-            <p>Bootstrap, provider route, runtime state, and root team scale.</p>
+            <p>Bootstrap route, SDK health, run volume, provider route, and subproject focus state.</p>
           </div>
         </div>
         <div id="mission-control" class="stats-grid"></div>
@@ -63,7 +123,7 @@
         <div class="panel__head">
           <div>
             <h2>Milestone Stream</h2>
-            <p>Department-head reports surfaced as user-facing milestones.</p>
+            <p>Department-head reports surfaced as user-facing checkpoints during the work.</p>
           </div>
         </div>
         <div id="milestone-list" class="timeline"></div>
@@ -73,7 +133,7 @@
         <div class="panel__head">
           <div>
             <h2>Workspace Surface</h2>
-            <p>Root paths, intake context, subprojects, and session persistence.</p>
+            <p>Canonical root paths, intake context, active subproject focus, and session persistence.</p>
           </div>
         </div>
         <div id="workspace-grid" class="workspace-grid"></div>
@@ -98,13 +158,13 @@
         <div class="panel__head">
           <div>
             <h2>Research Memory</h2>
-            <p>Root journals, interaction traces, and preserved user prompts.</p>
+            <p>Root journals, coordination history, and the preserved record of user requests.</p>
           </div>
         </div>
         <div id="log-columns" class="log-columns"></div>
       </section>
     </main>
 
-    <script src="/assets/app_v2.js"></script>
+    <script src="/assets/app_v3.js"></script>
   </body>
 </html>

@@ -25,6 +25,7 @@ from .intake import find_latest_intake_file, parse_intake_file
 from .live_runtime import LiveRuntimeError, run_root_orchestrator
 from .openai_runtime import build_root_runtime_spec, build_subproject_runtime_spec, detect_agents_sdk
 from .organization import ROOT_EXECUTIVE_ID, build_root_organization, build_subproject_organization
+from .provider_config import load_runtime_config, provider_bootstrap_available, resolve_provider_runtime
 from .visibility import can_read_path, can_write_path
 from .workspace import build_snapshot
 
@@ -43,18 +44,15 @@ def _emit_text(text: str) -> None:
         buffer.write((text + "\n").encode("utf-8"))
 
 
-def _has_root_openai_bootstrap() -> bool:
-    root = _workspace_root()
-    return bool(
-        os.environ.get("OPENAI_API_KEY")
-        or os.environ.get("GOOGLE_API_KEY")
-        or os.environ.get("GEMINI_API_KEY")
-        or (root / ".env").exists()
-    )
+def _has_root_provider_bootstrap() -> bool:
+    return provider_bootstrap_available(_workspace_root())
 
 
 def _should_open_browser() -> bool:
-    return os.environ.get("ASM_OPEN_BROWSER", "1") != "0"
+    env_override = os.environ.get("ASM_OPEN_BROWSER")
+    if env_override is not None:
+        return env_override != "0"
+    return load_runtime_config(_workspace_root()).launch.open_browser
 
 
 def _open_browser(url: str) -> None:
@@ -67,10 +65,23 @@ def _open_browser(url: str) -> None:
 
 
 def _start_operator_dashboard(root: Path):
+    launch = load_runtime_config(root).launch
     try:
-        return start_dashboard_server(root, host="127.0.0.1", port=8765, run_limit=12, log_limit=8)
+        return start_dashboard_server(
+            root,
+            host=launch.dashboard_host,
+            port=launch.dashboard_port,
+            run_limit=launch.dashboard_run_limit,
+            log_limit=launch.dashboard_log_limit,
+        )
     except OSError:
-        return start_dashboard_server(root, host="127.0.0.1", port=0, run_limit=12, log_limit=8)
+        return start_dashboard_server(
+            root,
+            host=launch.dashboard_host,
+            port=0,
+            run_limit=launch.dashboard_run_limit,
+            log_limit=launch.dashboard_log_limit,
+        )
 
 
 def _build_org(project: str | None):
@@ -468,6 +479,27 @@ def _print_runtime_summary(project: str | None, run_id: str | None, as_json: boo
     return 0
 
 
+def _print_provider_status(as_json: bool, provider: str | None = None) -> int:
+    root = _workspace_root()
+    payload = resolve_provider_runtime(root, provider_override=provider).to_dict()
+    payload["bootstrap_ready"] = provider_bootstrap_available(root, provider_override=provider)
+    if as_json:
+        _emit_text(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"provider: {payload['provider_id']}")
+    print(f"route: {payload['route_label']}")
+    print(f"config_path: {payload['config_path']}")
+    print(f"bootstrap_ready: {payload['bootstrap_ready']}")
+    print(f"base_url: {payload['base_url'] or '-'}")
+    print(f"model_strategy: {payload['model_strategy']}")
+    print(f"default_model: {payload['default_model'] or '-'}")
+    if payload["free_model_ids"]:
+        print(f"free_pool_size: {len(payload['free_model_ids'])}")
+        print(f"free_pool_source: {payload['free_model_source']}")
+    return 0
+
+
 def _dashboard(host: str, port: int, run_limit: int, log_limit: int, as_json: bool) -> int:
     root = _workspace_root()
     if as_json:
@@ -493,6 +525,7 @@ def _run_default_operator_session() -> int:
             "root-main",
             None,
             None,
+            None,
             False,
         )
     except KeyboardInterrupt:
@@ -509,6 +542,7 @@ def _launch_root(
     session_id: str,
     max_turns: int | None,
     auto_install: bool | None,
+    provider: str | None,
     as_json: bool,
 ) -> int:
     try:
@@ -520,6 +554,7 @@ def _launch_root(
             session_id=session_id,
             max_turns=max_turns,
             auto_install=auto_install,
+            provider=provider,
         )
     except LiveRuntimeError as exc:
         payload = {
@@ -527,6 +562,7 @@ def _launch_root(
             "error": str(exc),
             "scope": "root",
             "entry_agent_id": "root.orchestrator",
+            "provider": provider or resolve_provider_runtime(_workspace_root()).provider_id,
         }
         if as_json:
             print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -543,6 +579,8 @@ def _launch_root(
     print(f"entry_agent: {summary.entry_agent_id}")
     print(f"session_id: {summary.session_id}")
     print(f"session_db_path: {summary.session_db_path or '-'}")
+    print(f"provider: {summary.provider_id}")
+    print(f"provider_route: {summary.provider_route}")
     print(f"model: {summary.model}")
     print(f"intake_file: {summary.intake_file or '-'}")
     print(f"final_output: {summary.final_output}")
@@ -558,29 +596,27 @@ def _launch_openrouter_test(
     auto_install: bool | None,
     as_json: bool,
 ) -> int:
-    # region env guard
-    prev_test_mode = os.environ.get("ASM_OPENROUTER_TEST_MODE")
     prev_models = os.environ.get("ASM_OPENROUTER_FREE_MODELS")
-    os.environ["ASM_OPENROUTER_TEST_MODE"] = "1"
     if openrouter_models:
         os.environ["ASM_OPENROUTER_FREE_MODELS"] = openrouter_models
     else:
         os.environ.pop("ASM_OPENROUTER_FREE_MODELS", None)
-    # endregion
     try:
-        # model=None is important: OpenRouter test mode assigns a model per agent.
-        return _launch_root(prompt, intake_file, None, session_id, max_turns, auto_install, as_json)
+        return _launch_root(
+            prompt,
+            intake_file,
+            None,
+            session_id,
+            max_turns,
+            auto_install,
+            "openrouter",
+            as_json,
+        )
     finally:
-        # region env guard restore
-        if prev_test_mode is None:
-            os.environ.pop("ASM_OPENROUTER_TEST_MODE", None)
-        else:
-            os.environ["ASM_OPENROUTER_TEST_MODE"] = prev_test_mode
         if prev_models is None:
             os.environ.pop("ASM_OPENROUTER_FREE_MODELS", None)
         else:
             os.environ["ASM_OPENROUTER_FREE_MODELS"] = prev_models
-        # endregion
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -690,6 +726,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("sdk-status", help="Inspect local OpenAI Agents SDK availability.")
     p.add_argument("--json", action="store_true", help="Print JSON instead of plain text.")
 
+    p = sub.add_parser("provider-status", help="Inspect resolved provider config and bootstrap readiness.")
+    p.add_argument("--provider", choices=("openai", "openrouter", "g4f"), default=None)
+    p.add_argument("--json", action="store_true", help="Print JSON instead of plain text.")
+
     p = sub.add_parser("runtime-summary", help="Show the OpenAI runtime team spec for root or a subproject.")
     p.add_argument("--project", default=None, help="Subproject name. Omit for root runtime.")
     p.add_argument("--run-id", default=None, help="Optional prepared run id for contextual metadata.")
@@ -701,8 +741,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--model",
         default=None,
-        help="Optional global OpenAI model override. If omitted, the runtime uses per-agent model policy.",
+        help="Optional global model override. If omitted, the runtime uses provider-aware per-agent model policy.",
     )
+    p.add_argument("--provider", choices=("openai", "openrouter", "g4f"), default=None, help="Optional provider override.")
     p.add_argument("--session-id", default="root-main", help="Persistent session id.")
     p.add_argument("--max-turns", type=int, default=None, help="Maximum runner turns.")
     p.add_argument("--no-auto-install", action="store_true", help="Do not auto-install openai-agents if missing.")
@@ -710,7 +751,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser(
         "launch-openrouter-test",
-        help="Smoke test: assign each agent a per-agent OpenRouter 'free' model."
+        help="Compatibility shortcut: launch root runtime with provider=openrouter."
     )
     p.add_argument("--prompt", default=None, help="Optional explicit launch prompt.")
     p.add_argument("--intake-file", default=None, help="Optional explicit intake markdown file.")
@@ -733,7 +774,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parsed = parser.parse_args(args_list)
 
-    if parsed.command is None and _has_root_openai_bootstrap():
+    if parsed.command is None and _has_root_provider_bootstrap():
         return _run_default_operator_session()
     if parsed.command in (None, "overview"):
         return _print_overview()
@@ -790,6 +831,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     if parsed.command == "sdk-status":
         return _print_sdk_status(parsed.json)
+    if parsed.command == "provider-status":
+        return _print_provider_status(parsed.json, parsed.provider)
     if parsed.command == "runtime-summary":
         return _print_runtime_summary(parsed.project, parsed.run_id, parsed.json)
     if parsed.command == "launch-root":
@@ -800,6 +843,7 @@ def main(argv: list[str] | None = None) -> int:
             parsed.session_id,
             parsed.max_turns,
             False if parsed.no_auto_install else None,
+            parsed.provider,
             parsed.json,
         )
     if parsed.command == "launch-openrouter-test":
