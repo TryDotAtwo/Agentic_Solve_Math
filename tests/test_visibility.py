@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from workspace_orchestrator.agent_profiles import ensure_root_agent_profiles
 from workspace_orchestrator.organization import build_root_organization, build_subproject_organization
 from workspace_orchestrator.visibility import can_read_path, can_write_path
 
@@ -50,3 +51,16 @@ def test_write_scope_is_limited_to_allowed_roots(tmp_path: Path) -> None:
         is True
     )
     assert can_write_path(researcher, tmp_path / "rules" / "logs" / "session.md") is False
+
+
+def test_private_agent_memory_is_only_writable_by_its_owner(tmp_path: Path) -> None:
+    _prepare_root(tmp_path)
+    root_org = build_root_organization(tmp_path)
+    profiles = ensure_root_agent_profiles(tmp_path)
+
+    owner = root_org.get_agent("root.03_architecture_and_capability.rule_engineer")
+    peer = root_org.get_agent("root.03_architecture_and_capability.capability_designer")
+    memory_file = profiles["root.03_architecture_and_capability.rule_engineer"].memory_file
+
+    assert can_write_path(owner, memory_file) is True
+    assert can_write_path(peer, memory_file) is False

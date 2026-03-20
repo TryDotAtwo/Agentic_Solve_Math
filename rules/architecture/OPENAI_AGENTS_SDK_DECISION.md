@@ -197,3 +197,37 @@ The workspace now contains a first adapter layer in `workspace_orchestrator/open
 Current limitation:
 
 - the environment used for development currently reports `agents` as unavailable, so the implemented layer focuses on inspectable specs and bounded SDK bundle construction rather than live model execution.
+
+## Implementation note (launch slice, 2026-03-17)
+
+The workspace now also contains:
+
+- a live root launch path in `workspace_orchestrator/live_runtime.py`;
+- generic subproject commander activation driven from root-owned `run_id` handoffs;
+- bootstrap files for user-side launch (`.env.example`, `requirements.txt`);
+- auto-launch behavior in `main.py` when OpenAI bootstrap settings are present.
+
+This means the decision has now progressed from:
+
+- design note
+- to inspectable runtime adapter
+- to a concrete root launch flow that can call into generic subproject teams once the SDK is available in the target environment.
+
+## Implementation note (runtime hardening and model policy, 2026-03-18)
+
+The decision is now also grounded in a concrete operational model policy and launch hardening layer.
+
+Current state:
+
+- per-agent model routing is implemented in `workspace_orchestrator/model_policy.py`;
+- runtime specs expose model choice and rationale per role;
+- root `.env` may omit a global model override so that role-aware routing stays active;
+- live launch now has user-facing failure semantics for:
+  - quota exhaustion
+  - API connectivity failures
+  - workspace SQLite session I/O failures
+
+Observed live verification result in the current environment:
+
+- the SDK path now reaches the real OpenAI API successfully enough to receive an account-level 429 `insufficient_quota` response;
+- this is evidence that the remaining blocker is account quota/billing, not local runtime wiring.

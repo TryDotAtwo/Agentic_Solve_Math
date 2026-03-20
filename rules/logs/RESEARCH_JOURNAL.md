@@ -1168,3 +1168,476 @@ Target properties:
 
 - Connect the runtime spec layer to a real SDK runner path when the package becomes available.
 - Then start wiring hosted tools and bridge services into the root orchestrator entry flow.
+
+---
+
+## 2026-03-17 | Phase 2 implementation continuation - live root launch and generic subproject runtime
+
+### Goal
+
+Close the gap between “adapter exists” and “user can place a token and launch the root orchestrator from the workspace root”.
+
+Target properties:
+
+- root `main.py` auto-launches the live runtime when bootstrap settings are present;
+- root runtime has real operational tools, not only inspectable specs;
+- root can activate a generic subproject commander runtime from a prepared handoff;
+- subproject runtime produces a structured `subproject_result.json` artifact for the root-owned run lifecycle;
+- user bootstrap is documented with `.env.example` and `requirements.txt`.
+
+### Read / surveyed
+
+- `README.md`
+- `main.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `workspace_orchestrator/handoff.py`
+- `workspace_orchestrator/delegation.py`
+- `workspace_orchestrator/workspace.py`
+- official OpenAI docs:
+  - `https://openai.github.io/openai-agents-python/running_agents/`
+  - `https://openai.github.io/openai-agents-python/tools/`
+  - `https://openai.github.io/openai-agents-python/sessions/`
+  - `https://openai.github.io/openai-agents-python/multi_agent/`
+
+### Implementation decisions
+
+1. Keep root and subproject launch logic in a dedicated `live_runtime.py` module instead of inflating `cli.py`.
+2. Make root launch work from `.env` so the bootstrap matches the user’s requested workflow.
+3. Preserve root-owned run artifacts and use a generic subproject commander runtime rather than editing subproject internals.
+4. Attach real operational function tools to the live runtime entry agents, and hosted web search to research-capable agents when available.
+5. Use persistent SQLite sessions under `.agent_workspace/sessions/` to make long-running orchestration more reproducible.
+6. Add a structured fallback `subproject_result.json` if the model finishes without explicitly calling the result tool.
+
+### Files created or updated
+
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `main.py`
+- `README.md`
+- `.env.example`
+- `requirements.txt`
+- `tests/test_live_runtime.py`
+- `tests/integration/test_root_launch_cli.py`
+- `rules/architecture/AGENT_PROTOCOLS.md`
+- `rules/architecture/PHASE_2_TDD_IMPLEMENTATION_PLAN.md`
+- `rules/architecture/OPENAI_AGENTS_SDK_DECISION.md`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- `py -m pytest -q -p no:cacheprovider tests\test_live_runtime.py`
+- `py -m pytest -q -p no:cacheprovider tests\integration\test_root_launch_cli.py`
+
+### Verification notes
+
+- New live-runtime unit tests passed: `3 passed`.
+- New live-launch CLI integration tests passed: `2 passed`.
+- The root launcher now has a tested explicit live command and a tested no-args auto-launch path when bootstrap settings are present.
+- The generic subproject commander runtime now writes a structured subproject result artifact in tests.
+
+### Risks / unknowns
+
+- This environment still does not have the real `openai-agents` package installed, so live model execution remains validated through fake SDK contracts and official docs, not through a true online run here.
+- Department-specialized live tooling is still richer for some roles than others; the current slice establishes the operational baseline, not the final perfected tool lattice.
+- Long-running recovery, retries and production-grade monitoring still need additional hardening.
+
+### Next step
+
+- Validate the live path once `openai-agents` is available in the target environment.
+- Then deepen department-specific tool coverage and production recovery behavior.
+---
+
+## 2026-03-18 | Phase 2 implementation continuation - model policy, launch hardening, and real API verification
+
+### Goal
+
+Push the live root launch path from “assembled” to “operationally validated” by:
+
+- assigning models per role instead of one model for the whole runtime;
+- hardening live launch around real filesystem and API failures;
+- wiring user bootstrap locally through root `.env`;
+- verifying the real `openai-agents` path against the OpenAI API.
+
+### Read / surveyed
+
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/model_policy.py`
+- `workspace_orchestrator/cli.py`
+- `main.py`
+- `README.md`
+- official OpenAI docs:
+  - `https://platform.openai.com/docs/models`
+  - `https://openai.github.io/openai-agents-python/`
+  - `https://openai.github.io/openai-agents-python/running_agents/`
+  - `https://openai.github.io/openai-agents-python/sessions/`
+
+### Implementation decisions
+
+1. Adopt role-aware model routing:
+   - `gpt-5.2` for orchestrators, heads, researchers and auditors;
+   - `gpt-5.2-codex` for coding-heavy engineering and tooling roles;
+   - `gpt-5-mini` for historians, editorial roles and narrower support roles.
+2. Keep `ASM_OPENAI_MODEL` only as an explicit operator override instead of the default path.
+3. Add `.gitignore` coverage for `.env`, `.agent_workspace/`, `__pycache__/` and pytest artifacts.
+4. Bound root and historian operational tools more tightly to agent-specific ACL visibility instead of reusing one unrestricted tool pack.
+5. Add SQLite session fallback to a temp-backed store because the workspace filesystem rejected SQLite journal I/O during a real launch.
+6. Add user-facing live launch errors for:
+   - quota exhaustion;
+   - API connectivity failures.
+7. Make `main.py` propagate exit codes correctly to the shell.
+
+### Files created or updated
+
+- `.gitignore`
+- `.env`
+- `.env.example`
+- `README.md`
+- `main.py`
+- `workspace_orchestrator/model_policy.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `tests/test_model_policy.py`
+- `tests/test_openai_runtime.py`
+- `tests/test_live_runtime.py`
+- `tests/test_root_entrypoint.py`
+- `tests/integration/test_root_launch_cli.py`
+- `rules/architecture/AGENT_PROTOCOLS.md`
+- `rules/architecture/OPENAI_AGENTS_SDK_DECISION.md`
+- `rules/architecture/PHASE_2_TDD_IMPLEMENTATION_PLAN.md`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- `py main.py sdk-status --json`
+- `py main.py runtime-summary --json`
+- `py -m pytest -q -p no:cacheprovider tests\test_model_policy.py tests\test_openai_runtime.py tests\test_live_runtime.py`
+- `py -m pytest -q -p no:cacheprovider tests\test_root_entrypoint.py tests\integration\test_root_launch_cli.py`
+- `py -m pytest -q -p no:cacheprovider tests\test_organization.py tests\test_acl.py tests\test_visibility.py tests\test_communications.py tests\test_intake_parser.py tests\test_workspace_discovery.py tests\test_contracts.py tests\test_handoff.py tests\test_delegation.py tests\test_cli_runtime.py tests\test_execution.py tests\test_root_logs.py tests\test_openai_runtime.py tests\test_live_runtime.py tests\test_model_policy.py tests\test_root_entrypoint.py tests\integration\test_root_dry_run.py tests\integration\test_root_runtime_summary.py tests\integration\test_root_launch_cli.py`
+- real API smoke:
+  - `py main.py launch-root --prompt "...smoke test..." --max-turns 4 --json`
+- default entrypoint smoke:
+  - `py main.py`
+
+### Verification notes
+
+- `sdk-status` now reports the real installed package:
+  - `agents`
+  - version `0.12.3`
+- The runtime-summary path shows the full root team with preferred model routing in place.
+- Full root suite passed: `46 passed`.
+- Real launch reached the OpenAI API and returned an account-level 429 `insufficient_quota`.
+- After launch hardening, both explicit `launch-root` and default `py main.py` surface the quota issue as a concise operator-facing message instead of an unhandled traceback.
+- The real verification therefore shows that the remaining blocker is account quota/billing, not local runtime wiring.
+
+### Risks / unknowns
+
+- The configured API key currently does not have usable quota in the verified environment.
+- The underlying SDK still emits an additional stderr line from its own error reporting during failed API calls.
+- A successful live multi-turn orchestration run cannot be confirmed until quota/billing is available.
+
+### Next step
+
+- Re-run `py main.py` after quota/billing is enabled for the configured OpenAI account.
+- Once the account can answer successfully, validate one full root cycle and then move to deeper department-specific tool specialization and production recovery.
+
+---
+
+## 2026-03-20 | Session: Temporary Google AI switch for root runtime
+
+### Context
+
+User requested to apply Google AI API in the current runtime "for now" instead of OpenAI-only bootstrap.
+
+### Decisions
+
+1. Keep OpenAI Agents SDK runtime code path intact.
+2. Add compatibility bootstrap so Google keys can drive the same runtime:
+   - accept `GOOGLE_API_KEY` and `GEMINI_API_KEY`;
+   - map them to `OPENAI_API_KEY` at runtime when needed;
+   - set `OPENAI_BASE_URL` to Google OpenAI-compatible endpoint when mapped.
+3. Switch model policy defaults from GPT to Gemini:
+   - strong tier: `gemini-2.5-pro`;
+   - economical tier: `gemini-2.5-flash`.
+4. Keep backward compatibility:
+   - existing `OPENAI_API_KEY` still works;
+   - root bootstrap detection now also checks Google/Gemini env vars.
+
+### Files changed
+
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/model_policy.py`
+- `workspace_orchestrator/cli.py`
+- `.env.example`
+- `tests/test_model_policy.py`
+- `tests/test_openai_runtime.py`
+- `tests/test_live_runtime.py`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- `pytest tests/test_model_policy.py tests/test_openai_runtime.py tests/test_live_runtime.py tests/integration/test_root_launch_cli.py -q` with `PYTHONPATH=.`
+- Result: `17 passed`
+
+### Notes
+
+- This is a compatibility-level switch. It routes existing runtime wiring through Google OpenAI-compatible endpoint using Google key material.
+
+---
+
+## 2026-03-20 | Follow-up: 401 invalid_api_key with Gemini key
+
+### Observation
+
+Runtime returned 401 with message from OpenAI endpoint (`Incorrect API key provided ...`), which indicates requests were still routed to OpenAI host while key was Google-style (`AIza...`).
+
+### Fixes applied
+
+1. `ensure_openai_api_key` now also detects a Google-style key when it is stored directly under `OPENAI_API_KEY` and auto-sets:
+   - `OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`
+2. Added model name normalization:
+   - `Gemini 2.5 Flash` -> `gemini-2.5-flash`
+   - `Gemini 2.5 Pro` -> `gemini-2.5-pro`
+3. Updated tests to match active all-Flash model policy and the new key-routing behavior.
+
+### Verification
+
+- `pytest tests/test_model_policy.py tests/test_openai_runtime.py tests/test_live_runtime.py tests/integration/test_root_launch_cli.py -q` with `PYTHONPATH=.`
+- Result: `18 passed`
+
+---
+
+## 2026-03-20 | Session: Root observability dashboard for browser monitoring
+
+### Context
+
+User requested a pleasant browser interface for observing the progress of the root multi-agent system.
+
+The feature had to remain inside the root layer and respect the workspace invariant:
+
+- root shows root-owned orchestration state;
+- subprojects remain isolated;
+- dashboard reads canonical root artifacts instead of inventing a second unofficial state store.
+
+### Decisions
+
+1. Build the dashboard as a root-only surface on top of canonical artifacts:
+   - `.agent_workspace/runs/`
+   - `.agent_workspace/sessions/`
+   - `rules/logs/*.md`
+   - root organization/runtime specs
+   - latest root intake
+2. Avoid heavy external web dependencies:
+   - use a small local HTTP server;
+   - keep frontend as static HTML/CSS/JS assets in `workspace_orchestrator/dashboard_assets/`.
+3. Add a dedicated runtime status file for live root launch observability:
+   - `.agent_workspace/runtime/root_runtime_status.json`
+4. Keep browser monitoring separate from execution:
+   - operator can run `python main.py dashboard` in one terminal;
+   - run `python main.py` or `python main.py launch-root` in another terminal.
+5. Preserve TDD discipline before polishing UI and CLI behavior.
+
+### Files created or updated
+
+- `workspace_orchestrator/runtime_state.py`
+- `workspace_orchestrator/dashboard.py`
+- `workspace_orchestrator/dashboard_server.py`
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `workspace_orchestrator/dashboard_assets/app.js`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/cli.py`
+- `README.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `rules/architecture/README.md`
+- `rules/core/DOCUMENTATION_INDEX.md`
+- `tests/test_dashboard.py`
+- `tests/test_dashboard_server.py`
+- `tests/integration/test_dashboard_cli.py`
+- `tests/test_live_runtime.py`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- Targeted dashboard/runtime tests:
+  - `py -m pytest -q tests\test_dashboard.py tests\test_dashboard_server.py tests\integration\test_dashboard_cli.py tests\test_live_runtime.py`
+  - Result: `12 passed`
+- Root suite:
+  - `py -m pytest -q tests`
+  - Result: `52 passed`
+- CLI smoke:
+  - `py main.py dashboard --json`
+  - Result: successful snapshot emission from the real workspace
+
+### Verification notes
+
+- Browser observability now has three layers:
+  - data aggregation
+  - HTTP serving
+  - polished static UI
+- Root live runtime now records high-level state into `.agent_workspace/runtime/root_runtime_status.json`.
+- A Windows console encoding issue surfaced during JSON smoke and was fixed with a safe UTF-8 output path in the CLI.
+- Full workspace-wide `pytest` still touches isolated subproject tests and currently fails in `Math_Hypothese_AutoCheck_Witch_Agents/tests/test_invariants.py` during collection; this was intentionally not "fixed" from the root layer to preserve project boundaries.
+
+### Next step
+
+- Open `python main.py dashboard` in a browser during a real root orchestration cycle and validate the live operator experience against genuine multi-agent activity.
+- If needed, add richer live root traces or subproject-approved observability hooks without breaking isolation.
+
+---
+
+## 2026-03-20 | Session: Single-terminal operator session via `python main.py`
+
+### Context
+
+User requested that the normal launch path be reduced to a single command:
+
+- `python main.py`
+
+The request also required that startup and shutdown remain manageable from one terminal instead of splitting work between separate dashboard and runtime terminals.
+
+### Decisions
+
+1. Make no-argument `python main.py` the canonical operator-session path whenever root bootstrap is configured.
+2. In that path:
+   - start the local dashboard server in-process;
+   - print the dashboard URL to the terminal;
+   - try to open the browser automatically;
+   - launch the live root runtime in the same operator session;
+   - close the dashboard automatically when the session exits or is interrupted.
+3. Keep explicit commands intact:
+   - `python main.py dashboard`
+   - `python main.py launch-root`
+4. Preserve a single-terminal shutdown path via `Ctrl+C`.
+
+### Files updated
+
+- `workspace_orchestrator/cli.py`
+- `main.py`
+- `README.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `tests/integration/test_root_launch_cli.py`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- `py -m pytest -q tests\integration\test_root_launch_cli.py tests\test_root_entrypoint.py tests\test_dashboard.py tests\test_dashboard_server.py`
+- Result: `8 passed`
+- `py -m pytest -q tests`
+- Result: `54 passed`
+
+### Notes
+
+- Default no-arg launch now behaves like a lightweight supervisor around the already existing dashboard and root runtime.
+- Browser opening is best-effort and does not become a hard failure point.
+- Standalone dashboard mode remains available for debugging or operator preference.
+
+---
+
+## 2026-03-20 | Session: Dashboard redesign around graph, private memory, and milestone reports
+
+### Context
+
+User rejected the previous dashboard UX as both visually weak and structurally misleading:
+
+- layout had degraded;
+- the interface behaved like a card wall instead of an operator console;
+- the complex hierarchy was not justified visually;
+- there was no visible graph, no per-agent private memory surface, and no milestone reporting from department heads.
+
+### Decisions
+
+1. Strengthen the architecture before redesigning the UI:
+   - add private per-agent profile roots to organization manifests;
+   - materialize `memory.md`, `instructions.md`, `rules.md`, and `reports.md`;
+   - ensure owner-only private memory writes through ACL/write-scope policy.
+2. Add an explicit profile layer:
+   - `workspace_orchestrator/agent_profiles.py`
+   - milestone append helpers for department heads
+   - durable private memory append helpers for any agent.
+3. Extend runtime tooling:
+   - every live agent receives a private memory append tool;
+   - department heads additionally receive a milestone reporting tool.
+4. Rebuild dashboard data contracts:
+   - graph nodes and hierarchy/call edges;
+   - agent dossiers with model, files, excerpts, and callable links;
+   - milestone stream aggregated from head report files.
+5. Replace the browser surface with a more legible observability console:
+   - graph stage;
+   - agent inspector;
+   - milestone stream;
+   - improved run deck and workspace panels.
+
+### Files created or updated
+
+- `workspace_orchestrator/organization.py`
+- `workspace_orchestrator/agent_profiles.py`
+- `workspace_orchestrator/openai_runtime.py`
+- `workspace_orchestrator/live_runtime.py`
+- `workspace_orchestrator/dashboard.py`
+- `workspace_orchestrator/dashboard_server.py`
+- `workspace_orchestrator/dashboard_assets/index.html`
+- `workspace_orchestrator/dashboard_assets/app.css`
+- `workspace_orchestrator/dashboard_assets/app_v2.js`
+- `README.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
+- `tests/test_agent_profiles.py`
+- `tests/test_visibility.py`
+- `tests/test_dashboard.py`
+- `tests/test_dashboard_server.py`
+- `tests/test_live_runtime.py`
+- `rules/logs/USER_PROMPTS_LOG.md`
+- this file
+
+### Verification
+
+- Targeted redesign tests:
+  - `py -m pytest -q tests\test_agent_profiles.py tests\test_visibility.py tests\test_dashboard.py tests\test_live_runtime.py tests\test_dashboard_server.py`
+  - Result: `14 passed`
+- Full root suite:
+  - `py -m pytest -q tests`
+  - Result: `58 passed`
+- Real snapshot smoke:
+  - `py main.py dashboard --json`
+  - Result: successful snapshot generation with graph, dossiers, milestones, runs, logs, and sessions.
+
+### Verification notes
+
+- The redesigned dashboard now exposes root agents as a graph and no longer relies on department summary cards as the primary mental model.
+- Private per-agent files are now real root-owned artifacts, not only runtime prompt text.
+- Milestone reporting is now a first-class operator surface.
+- `node` was not available in the current shell, so JavaScript syntax was validated indirectly through HTTP-serving tests and successful dashboard snapshot execution rather than a separate `node --check` pass.
+
+### Next step
+
+- Run `python main.py` and inspect the redesigned browser dashboard during a live orchestration cycle.
+- If needed, continue refining graph density, node captions, and milestone summarization based on real operator usage.
+
+---
+
+## 2026-03-20 | OpenRouter test: per-agent model routing
+
+### What happened
+
+OpenRouter тестовый режим включался, но рантайм продолжал использовать `OPENAI_API_KEY` из `.env`, потому что `OPENROUTER_API_KEY` отсутствовал.
+
+Дополнительно выяснилось, что `openai-agents` по умолчанию падает на неизвестных модельных префиксах вида `qwen/...` (`Unknown prefix`), поэтому для OpenRouter test режима в `Runner.run_sync` добавляется `run_config` с `MultiProvider(unknown_prefix_mode="model_id")`.
+
+### Changes
+
+- `workspace_orchestrator/live_runtime.py`: при `ASM_OPENROUTER_TEST_MODE=1` — приоритет OpenRouter ключа и настройка `run_config` для допуска namespaced model ids.
+- `workspace_orchestrator/model_policy.py`: `ASM_OPENROUTER_TEST_MODE` — детерминированный per-agent выбор моделей из OpenRouter free allow-list.
+- `workspace_orchestrator/cli.py`: команда `launch-openrouter-test`.
+- `tests/test_openrouter_model_policy.py`: unit-тест детерминированного назначения.
+
+### Verification
+
+- Unit tests: `19 passed` (по локальному `pytest` для затронутых модулей).

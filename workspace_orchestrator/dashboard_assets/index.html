@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agentic Solve Math Observatory</title>
+    <link rel="stylesheet" href="/assets/app.css" />
+  </head>
+  <body>
+    <div class="page-glow"></div>
+    <div class="grid-noise"></div>
+
+    <header class="hero">
+      <div class="hero__eyebrow">Root Multi-Agent Observatory</div>
+      <div class="hero__content">
+        <div>
+          <h1>Agentic Solve Math Control Atlas</h1>
+          <p>
+            A browser control room for the root orchestration layer: agent graph,
+            private memory surfaces, milestone reports, run lifecycle, and research logs.
+          </p>
+        </div>
+        <div class="hero__status">
+          <span class="pill">Auto refresh every 4 seconds</span>
+          <span id="generated-at" class="pill pill--muted">Waiting for first snapshot</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <section class="panel panel--stage">
+        <div class="panel__head">
+          <div>
+            <h2>Team Graph</h2>
+            <p>Hierarchy at a glance, plus callable links for the selected agent.</p>
+          </div>
+          <div id="graph-meta" class="toolbar-pills"></div>
+        </div>
+        <div id="graph-surface" class="graph-surface"></div>
+      </section>
+
+      <aside class="panel panel--inspector">
+        <div class="panel__head">
+          <div>
+            <h2>Agent Inspector</h2>
+            <p>Private memory, base instructions, rules, and reachability for one agent.</p>
+          </div>
+        </div>
+        <div id="agent-inspector" class="inspector"></div>
+      </aside>
+
+      <section class="panel panel--mission">
+        <div class="panel__head">
+          <div>
+            <h2>Mission Control</h2>
+            <p>Bootstrap, provider route, runtime state, and root team scale.</p>
+          </div>
+        </div>
+        <div id="mission-control" class="stats-grid"></div>
+      </section>
+
+      <section class="panel panel--milestones">
+        <div class="panel__head">
+          <div>
+            <h2>Milestone Stream</h2>
+            <p>Department-head reports surfaced as user-facing milestones.</p>
+          </div>
+        </div>
+        <div id="milestone-list" class="timeline"></div>
+      </section>
+
+      <section class="panel panel--workspace">
+        <div class="panel__head">
+          <div>
+            <h2>Workspace Surface</h2>
+            <p>Root paths, intake context, subprojects, and session persistence.</p>
+          </div>
+        </div>
+        <div id="workspace-grid" class="workspace-grid"></div>
+      </section>
+
+      <section class="panel panel--wide">
+        <div class="panel__head">
+          <div>
+            <h2>Run Deck</h2>
+            <p>Recent orchestration runs, progress state, and canonical artifacts.</p>
+          </div>
+        </div>
+        <div class="run-layout">
+          <div id="run-list" class="run-list"></div>
+          <aside id="run-detail" class="run-detail">
+            <div class="empty-state">Choose a run to inspect its canonical payload.</div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="panel panel--wide">
+        <div class="panel__head">
+          <div>
+            <h2>Research Memory</h2>
+            <p>Root journals, interaction traces, and preserved user prompts.</p>
+          </div>
+        </div>
+        <div id="log-columns" class="log-columns"></div>
+      </section>
+    </main>
+
+    <script src="/assets/app_v2.js"></script>
+  </body>
+</html>

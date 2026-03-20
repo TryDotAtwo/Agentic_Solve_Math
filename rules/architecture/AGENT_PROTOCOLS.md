@@ -271,3 +271,79 @@ Current implementation boundary:
 - contextual metadata may be injected from a prepared run id;
 - a bounded SDK bundle may be materialized from the spec for a selected entry agent;
 - absence of the SDK is reported explicitly instead of breaking unrelated orchestration features.
+
+## Protocol 13 - Live Root Launch
+
+The root workspace now supports a live orchestration launch path.
+
+Current policy:
+
+- `main.py` may auto-launch the root runtime when OpenAI bootstrap settings are present;
+- explicit root launch is available through `launch-root`;
+- root launch resolves the latest intake when possible;
+- root launch uses persistent sessions under `.agent_workspace/sessions/`;
+- root launch may auto-install `openai-agents` when configured to do so.
+
+Current root launch bootstrap sources:
+
+- environment variable `OPENAI_API_KEY`
+- root `.env`
+- optional runtime knobs:
+  - `ASM_OPENAI_MODEL`
+  - `ASM_ROOT_MAX_TURNS`
+  - `ASM_AUTO_INSTALL`
+
+## Protocol 14 - Root-Managed Generic Subproject Commander Runtime
+
+Root may activate a generic subproject team without editing subproject internals.
+
+Current policy:
+
+- root-owned handoff packages remain the activation boundary;
+- a root-managed OpenAI runtime may launch the subproject commander for a prepared `run_id`;
+- the generic subproject runtime reads the handoff, inspects local project files and may perform research via hosted tools;
+- the generic subproject runtime must produce `subproject_result.json`;
+- if the model does not explicitly call the result tool, root writes a fallback structured result from the final output.
+
+Current artifact boundary:
+
+- input:
+  - `.agent_workspace/runs/<run_id>/handoff.json`
+- output:
+  - `.agent_workspace/runs/<run_id>/subproject_result.json`
+
+## Protocol 15 - Per-Agent Model Policy
+
+Live runtime must prefer role-aware model assignment over a single global model string.
+
+Current policy:
+
+- if `ASM_OPENAI_MODEL` is omitted, runtime uses per-agent model policy derived from manifests;
+- `gpt-5.2` is the default strong general tier for orchestrators, heads, researchers and auditors;
+- `gpt-5.2-codex` is the default coding tier for solver engineering and tooling-heavy roles;
+- `gpt-5-mini` is the economical tier for historians, editorial roles and narrower support roles;
+- `ASM_OPENAI_MODEL` remains available only as an explicit global override.
+
+Current implementation boundary:
+
+- policy lives in `workspace_orchestrator/model_policy.py`;
+- runtime specs expose both `preferred_model` and `model_rationale`;
+- live root and subproject launchers inherit the policy unless the operator overrides it explicitly.
+
+## Protocol 16 - Live Launch Failure Semantics
+
+Live launch failures must degrade into user-readable operational messages instead of raw unhandled tracebacks.
+
+Current policy:
+
+- workspace-backed SQLite sessions may fall back to a temp-backed session store if the workspace filesystem rejects SQLite journal I/O;
+- root launch should return a friendly quota message for `insufficient_quota`;
+- root launch should return a friendly connectivity message for API connection failures;
+- root `main.py` must propagate non-zero exit codes to the shell.
+
+Current implementation boundary:
+
+- session fallback is implemented in `workspace_orchestrator/live_runtime.py`;
+- launch-friendly error wrapping is implemented in `workspace_orchestrator/live_runtime.py`;
+- root CLI error shaping is implemented in `workspace_orchestrator/cli.py`;
+- root process exit propagation is implemented in `main.py`.

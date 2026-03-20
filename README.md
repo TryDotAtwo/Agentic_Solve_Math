@@ -54,19 +54,94 @@
 
 ## Статус root launcher
 
-Сейчас `main.py` ещё сохраняет совместимость со сценарием CayleyPy-444-Cube и работает как тонкий wrapper.
+`main.py` теперь работает в двух режимах:
 
-Целевое состояние:
+- если в окружении есть `OPENAI_API_KEY` или в корне лежит `.env`, запуск без аргументов поднимает единый operator session:
+  - стартует local dashboard;
+  - URL печатается в терминал;
+  - браузер открывается автоматически;
+  - live root orchestrator запускается в том же процессе;
+  - остановка делается из этого же терминала через `Ctrl+C`;
+- если bootstrap ещё не настроен, `main.py` остаётся root CLI entrypoint и показывает overview/служебные команды.
 
-- `main.py` запускает универсальный root orchestrator;
-- orchestrator читает intake, поднимает мультиагентную систему и делегирует работу в изолированные подпроекты;
-- локальная реализация остаётся внутри подпроектов, а не в корне.
+Live root launch использует root-level multi-agent runtime из `workspace_orchestrator/`, может читать последний intake, строить handoff-пакеты и активировать generic subproject commander runtime без правки внутренних файлов подпроекта.
+
+### Минимальный запуск
+
+1. Скопировать `.env.example` в `.env`.
+2. Вставить `OPENAI_API_KEY`.
+3. При желании задать `ASM_OPENAI_MODEL` как глобальный override, но по умолчанию лучше оставить per-agent model policy.
+4. Запустить:
+
+```bash
+python main.py
+```
+
+Это теперь основной рекомендуемый запуск:
+
+- всё стартует из одной команды;
+- наблюдение и orchestration живут под одним root process;
+- отдельный второй терминал больше не нужен.
+
+Поддерживаются и явные команды:
+
+```bash
+python main.py launch-root
+python main.py dashboard
+python main.py sdk-status
+python main.py runtime-summary --json
+```
+
+По умолчанию runtime сам распределяет модели по ролям:
+
+- `gemini-2.5-flash` как текущий active tier для оркестрации, research, audit и support-ролей;
+- model policy остаётся role-aware и может быть переопределена позже без смены root launcher surface;
+- текущий runtime использует Google OpenAI-compatible route, если root bootstrap настроен через Google/Gemini key material.
+
+## Browser Dashboard
+
+Для наблюдения за ходом работ теперь есть отдельный root-level browser dashboard.
+
+По умолчанию он уже поднимается внутри `python main.py`.
+
+Запуск:
+
+```bash
+python main.py dashboard
+```
+
+Что показывает dashboard:
+
+- bootstrap/provider status;
+- graph корневой команды с агентами как вершинами и hierarchy/call links как связями;
+- agent inspector с private memory, base instructions, rules и report surfaces выбранного агента;
+- milestone stream из user-facing отчётов глав департаментов;
+- последние root-owned handoff/run артефакты;
+- root runtime status из `.agent_workspace/runtime/root_runtime_status.json`;
+- root journals и user prompts;
+- карту подпроектов и session storage.
+
+У каждого root-agent теперь есть собственный private profile-root в `.agent_workspace/agent_profiles/`, где материализуются:
+
+- `memory.md` — долговременная приватная память агента;
+- `instructions.md` — базовые инструкции роли;
+- `rules.md` — правила работы и иерархические ограничения;
+- `reports.md` — отчёты и milestone entries для пользовательского dashboard surface.
+
+Рекомендуемый режим работы:
+
+1. Просто выполнить `python main.py`.
+2. Дождаться открытия browser dashboard.
+3. При необходимости остановить всё через `Ctrl+C` в этом же терминале.
+
+Отдельная команда `python main.py dashboard` остаётся доступной как standalone observability mode, если нужно поднять только UI без live root launch.
 
 Подробная целевая архитектура вынесена в:
 
 - `rules/architecture/ROOT_RESTRUCTURE_PLAN.md`
 - `rules/architecture/ROOT_MULTIAGENT_ARCHITECTURE.md`
 - `rules/architecture/AGENT_PROTOCOLS.md`
+- `rules/architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
 - `rules/architecture/KAGGLE_RESEARCH_AGENT_BLUEPRINT.md`
 - `rules/architecture/MCP_SERVER_STRATEGY.md`
 - `rules/architecture/IMPLEMENTATION_ROADMAP.md`

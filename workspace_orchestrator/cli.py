@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 
 from .acl import can_call_agent
 from .communications import callable_targets
 from .contracts import DelegationResult
+from .dashboard import build_dashboard_snapshot
+from .dashboard_server import serve_dashboard, start_dashboard_server
 from .delegation import describe_run, load_handoff_package, record_delegation_result
 from .execution import execute_run
 from .handoff import (
@@ -18,6 +22,7 @@ from .handoff import (
     materialize_handoff_package,
 )
 from .intake import find_latest_intake_file, parse_intake_file
+from .live_runtime import LiveRuntimeError, run_root_orchestrator
 from .openai_runtime import build_root_runtime_spec, build_subproject_runtime_spec, detect_agents_sdk
 from .organization import ROOT_EXECUTIVE_ID, build_root_organization, build_subproject_organization
 from .visibility import can_read_path, can_write_path
@@ -26,6 +31,46 @@ from .workspace import build_snapshot
 
 def _workspace_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+
+def _emit_text(text: str) -> None:
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        buffer = getattr(sys.stdout, "buffer", None)
+        if buffer is None:
+            raise
+        buffer.write((text + "\n").encode("utf-8"))
+
+
+def _has_root_openai_bootstrap() -> bool:
+    root = _workspace_root()
+    return bool(
+        os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+        or os.environ.get("GEMINI_API_KEY")
+        or (root / ".env").exists()
+    )
+
+
+def _should_open_browser() -> bool:
+    return os.environ.get("ASM_OPEN_BROWSER", "1") != "0"
+
+
+def _open_browser(url: str) -> None:
+    if not _should_open_browser():
+        return
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
+def _start_operator_dashboard(root: Path):
+    try:
+        return start_dashboard_server(root, host="127.0.0.1", port=8765, run_limit=12, log_limit=8)
+    except OSError:
+        return start_dashboard_server(root, host="127.0.0.1", port=0, run_limit=12, log_limit=8)
 
 
 def _build_org(project: str | None):
@@ -423,6 +468,121 @@ def _print_runtime_summary(project: str | None, run_id: str | None, as_json: boo
     return 0
 
 
+def _dashboard(host: str, port: int, run_limit: int, log_limit: int, as_json: bool) -> int:
+    root = _workspace_root()
+    if as_json:
+        payload = build_dashboard_snapshot(root, run_limit=run_limit, log_limit=log_limit).to_dict()
+        _emit_text(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    serve_dashboard(root, host=host, port=port, run_limit=run_limit, log_limit=log_limit)
+    return 0
+
+
+def _run_default_operator_session() -> int:
+    root = _workspace_root()
+    dashboard_handle = _start_operator_dashboard(root)
+    try:
+        _emit_text("Agentic Solve Math - operator session")
+        _emit_text(f"dashboard_url: {dashboard_handle.url}")
+        _emit_text("stop_hint: press Ctrl+C in this terminal to stop the root session and dashboard")
+        _open_browser(dashboard_handle.url)
+        return _launch_root(
+            None,
+            None,
+            None,
+            "root-main",
+            None,
+            None,
+            False,
+        )
+    except KeyboardInterrupt:
+        _emit_text("operator_session_status: interrupted")
+        return 130
+    finally:
+        dashboard_handle.close()
+
+
+def _launch_root(
+    prompt: str | None,
+    intake_file: str | None,
+    model: str | None,
+    session_id: str,
+    max_turns: int | None,
+    auto_install: bool | None,
+    as_json: bool,
+) -> int:
+    try:
+        summary = run_root_orchestrator(
+            _workspace_root(),
+            prompt=prompt,
+            intake_file=intake_file,
+            model=model,
+            session_id=session_id,
+            max_turns=max_turns,
+            auto_install=auto_install,
+        )
+    except LiveRuntimeError as exc:
+        payload = {
+            "status": "error",
+            "error": str(exc),
+            "scope": "root",
+            "entry_agent_id": "root.orchestrator",
+        }
+        if as_json:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print(f"launch_error: {exc}")
+        return 1
+    payload = summary.to_dict()
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"scope: {summary.scope}")
+    print(f"team: {summary.team_id}")
+    print(f"entry_agent: {summary.entry_agent_id}")
+    print(f"session_id: {summary.session_id}")
+    print(f"session_db_path: {summary.session_db_path or '-'}")
+    print(f"model: {summary.model}")
+    print(f"intake_file: {summary.intake_file or '-'}")
+    print(f"final_output: {summary.final_output}")
+    return 0
+
+
+def _launch_openrouter_test(
+    prompt: str | None,
+    intake_file: str | None,
+    session_id: str,
+    max_turns: int | None,
+    openrouter_models: str | None,
+    auto_install: bool | None,
+    as_json: bool,
+) -> int:
+    # region env guard
+    prev_test_mode = os.environ.get("ASM_OPENROUTER_TEST_MODE")
+    prev_models = os.environ.get("ASM_OPENROUTER_FREE_MODELS")
+    os.environ["ASM_OPENROUTER_TEST_MODE"] = "1"
+    if openrouter_models:
+        os.environ["ASM_OPENROUTER_FREE_MODELS"] = openrouter_models
+    else:
+        os.environ.pop("ASM_OPENROUTER_FREE_MODELS", None)
+    # endregion
+    try:
+        # model=None is important: OpenRouter test mode assigns a model per agent.
+        return _launch_root(prompt, intake_file, None, session_id, max_turns, auto_install, as_json)
+    finally:
+        # region env guard restore
+        if prev_test_mode is None:
+            os.environ.pop("ASM_OPENROUTER_TEST_MODE", None)
+        else:
+            os.environ["ASM_OPENROUTER_TEST_MODE"] = prev_test_mode
+        if prev_models is None:
+            os.environ.pop("ASM_OPENROUTER_FREE_MODELS", None)
+        else:
+            os.environ["ASM_OPENROUTER_FREE_MODELS"] = prev_models
+        # endregion
+
+
 def main(argv: list[str] | None = None) -> int:
     args_list = list(sys.argv[1:] if argv is None else argv)
 
@@ -535,8 +695,46 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--run-id", default=None, help="Optional prepared run id for contextual metadata.")
     p.add_argument("--json", action="store_true", help="Print JSON instead of plain text.")
 
+    p = sub.add_parser("launch-root", help="Launch the live root multi-agent orchestration runtime.")
+    p.add_argument("--prompt", default=None, help="Optional explicit launch prompt.")
+    p.add_argument("--intake-file", default=None, help="Optional explicit intake markdown file.")
+    p.add_argument(
+        "--model",
+        default=None,
+        help="Optional global OpenAI model override. If omitted, the runtime uses per-agent model policy.",
+    )
+    p.add_argument("--session-id", default="root-main", help="Persistent session id.")
+    p.add_argument("--max-turns", type=int, default=None, help="Maximum runner turns.")
+    p.add_argument("--no-auto-install", action="store_true", help="Do not auto-install openai-agents if missing.")
+    p.add_argument("--json", action="store_true", help="Print JSON instead of plain text.")
+
+    p = sub.add_parser(
+        "launch-openrouter-test",
+        help="Smoke test: assign each agent a per-agent OpenRouter 'free' model."
+    )
+    p.add_argument("--prompt", default=None, help="Optional explicit launch prompt.")
+    p.add_argument("--intake-file", default=None, help="Optional explicit intake markdown file.")
+    p.add_argument("--session-id", default="root-openrouter-test", help="Persistent session id.")
+    p.add_argument("--max-turns", type=int, default=None, help="Maximum runner turns.")
+    p.add_argument(
+        "--openrouter-models",
+        default=None,
+        help="Optional comma-separated OpenRouter model ids to use as the free list override.",
+    )
+    p.add_argument("--no-auto-install", action="store_true", help="Do not auto-install openai-agents if missing.")
+    p.add_argument("--json", action="store_true", help="Print JSON instead of plain text.")
+
+    p = sub.add_parser("dashboard", help="Serve the browser dashboard for root orchestration observability.")
+    p.add_argument("--host", default="127.0.0.1", help="Bind host for the local dashboard server.")
+    p.add_argument("--port", type=int, default=8765, help="Bind port for the local dashboard server.")
+    p.add_argument("--run-limit", type=int, default=12, help="How many recent runs to show in the dashboard payload.")
+    p.add_argument("--log-limit", type=int, default=8, help="How many recent entries to show per root log.")
+    p.add_argument("--json", action="store_true", help="Print the current dashboard snapshot instead of serving HTTP.")
+
     parsed = parser.parse_args(args_list)
 
+    if parsed.command is None and _has_root_openai_bootstrap():
+        return _run_default_operator_session()
     if parsed.command in (None, "overview"):
         return _print_overview()
     if parsed.command == "list-subprojects":
@@ -594,5 +792,27 @@ def main(argv: list[str] | None = None) -> int:
         return _print_sdk_status(parsed.json)
     if parsed.command == "runtime-summary":
         return _print_runtime_summary(parsed.project, parsed.run_id, parsed.json)
+    if parsed.command == "launch-root":
+        return _launch_root(
+            parsed.prompt,
+            parsed.intake_file,
+            parsed.model,
+            parsed.session_id,
+            parsed.max_turns,
+            False if parsed.no_auto_install else None,
+            parsed.json,
+        )
+    if parsed.command == "launch-openrouter-test":
+        return _launch_openrouter_test(
+            parsed.prompt,
+            parsed.intake_file,
+            parsed.session_id,
+            parsed.max_turns,
+            parsed.openrouter_models,
+            False if parsed.no_auto_install else None,
+            parsed.json,
+        )
+    if parsed.command == "dashboard":
+        return _dashboard(parsed.host, parsed.port, parsed.run_limit, parsed.log_limit, parsed.json)
 
     raise SystemExit(f"Unknown command: {parsed.command}")

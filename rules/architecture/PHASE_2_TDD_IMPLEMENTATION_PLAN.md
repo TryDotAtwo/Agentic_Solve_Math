@@ -439,3 +439,76 @@ Still pending after this slice:
 - wiring runtime-spec activation into the main orchestration loop;
 - bridging hosted tools and future MCP-backed services into the SDK layer;
 - deeper cycle-aware activation for large department graphs beyond the current bounded bundle.
+
+## Progress marker (2026-03-17, live launch slice)
+
+Additional implementation completed:
+
+- live root launch runtime in `workspace_orchestrator/live_runtime.py`;
+- persistent SQLite-backed session bootstrap for root and subproject runs;
+- generic root-managed subproject commander runtime driven from root-owned handoff packages;
+- root operational function tools for:
+  - workspace inspection
+  - intake parsing
+  - runtime inspection
+  - handoff creation
+  - subproject activation
+- subproject operational function tools for:
+  - handoff inspection
+  - local file reading
+  - structured result recording
+- auto-launch behavior for `main.py` when OpenAI bootstrap settings are present;
+- root bootstrap files:
+  - `.env.example`
+  - `requirements.txt`
+
+Additional tests completed:
+
+- `tests/test_live_runtime.py`
+- `tests/integration/test_root_launch_cli.py`
+
+Meaning of this progress marker:
+
+- The workspace now has a real launchable root runtime path, not only an inspectable spec layer.
+- A user can prepare `.env`, run `main.py` from the root and enter the live orchestration path.
+- Root can now activate a generic subproject commander runtime without patching subproject internals.
+
+Still pending after this slice:
+
+- validation against a real installed `openai-agents` environment and live models;
+- richer tool coverage for every department role beyond the current operational baseline;
+- deeper production hardening for long-running loops, retries and failure recovery.
+
+## Progress marker (2026-03-18, model policy and live launch hardening slice)
+
+Additional implementation completed:
+
+- per-agent model selection in `workspace_orchestrator/model_policy.py`;
+- runtime spec exposure of `preferred_model` and `model_rationale`;
+- `.gitignore` and root `.env` bootstrap hygiene for secrets and runtime artifacts;
+- ACL-bounded live operational tools for root editorial and subproject historian roles;
+- SQLite session fallback from workspace storage to temp-backed storage when the local filesystem rejects journal I/O;
+- friendly live launch error shaping for:
+  - quota exhaustion
+  - API connectivity failure
+- root `main.py` process exit-code propagation.
+
+Additional tests completed:
+
+- `tests/test_model_policy.py`
+- expanded `tests/test_openai_runtime.py`
+- expanded `tests/test_live_runtime.py`
+- expanded `tests/integration/test_root_launch_cli.py`
+- `tests/test_root_entrypoint.py`
+
+Meaning of this progress marker:
+
+- Iteration 7 hardens the launch path from “assembled” to “operationally understandable”.
+- The root entrypoint now behaves correctly in shells and automation.
+- Real API verification has progressed far enough to show that the next blocker is quota, not local code wiring.
+
+Still pending after this slice:
+
+- successful live response from the configured OpenAI account after quota/billing is available;
+- optional suppression or redirection of residual SDK-side stderr logs during failed API calls;
+- deeper department-specific tool specialization and long-running recovery loops.

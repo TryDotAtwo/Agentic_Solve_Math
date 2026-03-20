@@ -41,6 +41,7 @@ Use this section as the current source of truth.
 - `../architecture/PHASE_2_TDD_IMPLEMENTATION_PLAN.md`
 - `../architecture/HIERARCHICAL_DEPARTMENT_MODEL.md`
 - `../architecture/ACCESS_CONTROL_AND_VISIBILITY_MODEL.md`
+- `../architecture/ROOT_OBSERVABILITY_DASHBOARD.md`
 - `../organization/README.md`
 - `../organization/root_command/README.md`
 - `../organization/root_departments/README.md`

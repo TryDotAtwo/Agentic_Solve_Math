@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
@@ -7,6 +8,7 @@ from importlib.util import find_spec
 from pathlib import Path
 
 from .delegation import load_handoff_package
+from .model_policy import select_model_for_agent
 from .organization import AgentManifest, OrganizationModel, build_root_organization, build_subproject_organization
 
 
@@ -50,6 +52,13 @@ class RuntimeAgentSpec:
     shared_service: bool
     handoff_description: str
     instructions: str
+    preferred_model: str
+    model_rationale: str
+    private_profile_root: str
+    memory_path: str
+    instructions_path: str
+    rules_path: str
+    reports_path: str
     allowed_tools: tuple[str, ...] = field(default_factory=tuple)
     read_roots: tuple[str, ...] = field(default_factory=tuple)
     write_roots: tuple[str, ...] = field(default_factory=tuple)
@@ -149,10 +158,14 @@ def _build_runtime_metadata(
 
 
 def _instruction_text(manifest: AgentManifest, metadata: RuntimeMetadata) -> str:
+    base_instructions = _load_optional_text(manifest.instructions_file)
+    base_rules = _load_optional_text(manifest.rules_file)
     return " ".join(
         (
             f"You are {manifest.display_name} ({manifest.agent_id}).",
             f"Scope: {manifest.scope}. Department: {manifest.department_key}. Rank: {manifest.rank}.",
+            f"Private profile root: {manifest.private_profile_root}.",
+            f"Memory file: {manifest.memory_file}. Reports file: {manifest.reports_file}.",
             f"Readable roots: {', '.join(str(item) for item in manifest.read_roots) or '-'}.",
             f"Writable roots: {', '.join(str(item) for item in manifest.write_roots) or '-'}.",
             f"Hidden roots: {', '.join(str(item) for item in manifest.hidden_roots) or '-'}.",
@@ -169,8 +182,16 @@ def _instruction_text(manifest: AgentManifest, metadata: RuntimeMetadata) -> str
                 "Honor ACL and visibility boundaries, do not access hidden roots, "
                 "and escalate policy or architecture changes instead of bypassing hierarchy."
             ),
+            f"Base instructions file content: {base_instructions or '-'}",
+            f"Base rules file content: {base_rules or '-'}",
         )
     )
+
+
+def _load_optional_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return " ".join(line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
 
 
 def _handoff_target_ids(manifest: AgentManifest) -> tuple[str, ...]:
@@ -191,23 +212,7 @@ def _build_team_spec(
 ) -> RuntimeTeamSpec:
     metadata = _build_runtime_metadata(organization, run_id=run_id)
     agents = tuple(
-        RuntimeAgentSpec(
-            agent_id=manifest.agent_id,
-            display_name=manifest.display_name,
-            scope=manifest.scope,
-            department_key=manifest.department_key,
-            rank=manifest.rank,
-            shared_service=manifest.shared_service,
-            handoff_description=f"{manifest.display_name} handles {manifest.department_key} responsibilities.",
-            instructions=_instruction_text(manifest, metadata),
-            allowed_tools=manifest.allowed_tools,
-            read_roots=tuple(str(item) for item in manifest.read_roots),
-            write_roots=tuple(str(item) for item in manifest.write_roots),
-            hidden_roots=tuple(str(item) for item in manifest.hidden_roots),
-            handoff_target_ids=_handoff_target_ids(manifest),
-            tool_target_ids=_tool_target_ids(manifest),
-            mutable_rule_roots=tuple(str(item) for item in manifest.mutable_rule_roots),
-        )
+        _runtime_agent_spec(manifest, metadata)
         for manifest in organization.agents
     )
     return RuntimeTeamSpec(
@@ -219,6 +224,40 @@ def _build_team_spec(
         agents_sdk=detect_agents_sdk(),
         orchestration_pattern=orchestration_pattern,
         agents=agents,
+    )
+
+
+def _runtime_agent_spec(manifest: AgentManifest, metadata: RuntimeMetadata) -> RuntimeAgentSpec:
+    policy = select_model_for_agent(
+        agent_id=manifest.agent_id,
+        scope=manifest.scope,
+        department_key=manifest.department_key,
+        rank=manifest.rank,
+        shared_service=manifest.shared_service,
+    )
+    return RuntimeAgentSpec(
+        agent_id=manifest.agent_id,
+        display_name=manifest.display_name,
+        scope=manifest.scope,
+        department_key=manifest.department_key,
+        rank=manifest.rank,
+        shared_service=manifest.shared_service,
+        handoff_description=f"{manifest.display_name} handles {manifest.department_key} responsibilities.",
+        instructions=_instruction_text(manifest, metadata),
+        preferred_model=policy.model,
+        model_rationale=policy.rationale,
+        private_profile_root=str(manifest.private_profile_root),
+        memory_path=str(manifest.memory_file),
+        instructions_path=str(manifest.instructions_file),
+        rules_path=str(manifest.rules_file),
+        reports_path=str(manifest.reports_file),
+        allowed_tools=manifest.allowed_tools,
+        read_roots=tuple(str(item) for item in manifest.read_roots),
+        write_roots=tuple(str(item) for item in manifest.write_roots),
+        hidden_roots=tuple(str(item) for item in manifest.hidden_roots),
+        handoff_target_ids=_handoff_target_ids(manifest),
+        tool_target_ids=_tool_target_ids(manifest),
+        mutable_rule_roots=tuple(str(item) for item in manifest.mutable_rule_roots),
     )
 
 
@@ -249,6 +288,13 @@ def _tool_name(agent_id: str) -> str:
     return f"call_{agent_id.replace('.', '_')}"
 
 
+def _sdk_agent_name(display_name: str) -> str:
+    sanitized = display_name.replace("-", " ")
+    sanitized = re.sub(r"[^A-Za-z0-9_ ]+", "", sanitized)
+    sanitized = re.sub(r"\s+", " ", sanitized).strip()
+    return sanitized or "Agent"
+
+
 def _load_agents_module():
     availability = detect_agents_sdk()
     if not availability.available:
@@ -259,8 +305,9 @@ def _load_agents_module():
 def instantiate_agents_sdk_bundle(
     team_spec: RuntimeTeamSpec,
     entry_agent_id: str | None = None,
-    model: str = DEFAULT_OPENAI_MODEL,
+    model: str | None = None,
     expansion_depth: int = 1,
+    extra_tools_by_agent_id: dict[str, list[object]] | None = None,
 ) -> AgentsSDKBundle:
     agents_module = _load_agents_module()
     agent_cls = getattr(agents_module, "Agent")
@@ -268,6 +315,7 @@ def instantiate_agents_sdk_bundle(
     by_id = {agent.agent_id: agent for agent in team_spec.agents}
     cache: dict[tuple[str, int], object] = {}
     support_agents: dict[str, object] = {}
+    extra_tools_by_agent_id = extra_tools_by_agent_id or {}
 
     def build(agent_id: str, depth: int) -> object:
         key = (agent_id, depth)
@@ -279,6 +327,8 @@ def instantiate_agents_sdk_bundle(
         handoffs = []
         if depth > 0:
             for target_id in spec.tool_target_ids:
+                if target_id not in by_id:
+                    continue
                 target = build(target_id, depth - 1)
                 support_agents[target_id] = target
                 tools.append(
@@ -288,14 +338,17 @@ def instantiate_agents_sdk_bundle(
                     )
                 )
             for target_id in spec.handoff_target_ids:
+                if target_id not in by_id:
+                    continue
                 target = build(target_id, depth - 1)
                 support_agents[target_id] = target
                 handoffs.append(target)
+        tools.extend(extra_tools_by_agent_id.get(agent_id, ()))
 
         kwargs = {
-            "name": spec.display_name,
+            "name": _sdk_agent_name(spec.display_name),
             "instructions": spec.instructions,
-            "model": model,
+            "model": model or spec.preferred_model or DEFAULT_OPENAI_MODEL,
         }
         if spec.handoff_description:
             kwargs["handoff_description"] = spec.handoff_description

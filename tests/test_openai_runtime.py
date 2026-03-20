@@ -77,13 +77,17 @@ def test_build_root_runtime_spec_propagates_run_metadata(tmp_path: Path) -> None
     team = build_root_runtime_spec(root, run_id=run_id)
     orchestrator = team.get_agent("root.orchestrator")
     research_head = team.get_agent("root.02_research_intelligence.head")
+    history_scribe = team.get_agent("root.06_editorial_and_history.history_scribe")
 
     assert team.manager_agent_id == "root.orchestrator"
     assert team.metadata.run_id == run_id
     assert team.metadata.handoff_id == "handoff-001"
     assert team.metadata.objective == "Investigate the fixture competition"
     assert team.metadata.target_agent_id == "subproject.CayleyPy_TestHarness.commander"
+    assert orchestrator.preferred_model == "gpt-5.2"
     assert "root.01_intake_and_orchestration.head" in orchestrator.handoff_target_ids
+    assert research_head.preferred_model == "gpt-5.2"
+    assert history_scribe.preferred_model == "gpt-5-mini"
     assert research_head.tool_target_ids == (
         "root.02_research_intelligence.global_searcher",
         "root.02_research_intelligence.paper_scout",
@@ -98,9 +102,12 @@ def test_build_subproject_runtime_spec_marks_local_shared_services(tmp_path: Pat
     team = build_subproject_runtime_spec(root, "CayleyPy_TestHarness", run_id=run_id)
     commander = team.get_agent("subproject.CayleyPy_TestHarness.commander")
     editorial_head = team.get_agent("subproject.CayleyPy_TestHarness.07_editorial_and_history.head")
+    search_engineer = team.get_agent("subproject.CayleyPy_TestHarness.05_solver_engineering.search_engineer")
 
     assert team.manager_agent_id == "subproject.CayleyPy_TestHarness.commander"
     assert team.metadata.run_id == run_id
+    assert commander.preferred_model == "gpt-5.2"
+    assert search_engineer.preferred_model == "gpt-5.2-codex"
     assert "subproject.CayleyPy_TestHarness.01_source_intelligence.head" in commander.handoff_target_ids
     assert (
         "subproject.CayleyPy_TestHarness.07_editorial_and_history.local_historian"
@@ -136,13 +143,13 @@ def test_instantiate_agents_sdk_bundle_uses_fake_sdk(tmp_path: Path, monkeypatch
     bundle = instantiate_agents_sdk_bundle(
         team,
         entry_agent_id="root.02_research_intelligence.head",
-        model="gpt-5-mini",
+        model=None,
         expansion_depth=1,
     )
 
     entry_agent = bundle.entry_agent
     assert isinstance(entry_agent, FakeAgent)
-    assert entry_agent.model == "gpt-5-mini"
+    assert entry_agent.model == "gpt-5.2"
     assert len(entry_agent.tools) == 3
     assert entry_agent.tools[0]["tool_name"] == "call_root_02_research_intelligence_global_searcher"
     assert bundle.materialized_agent_ids == ("root.02_research_intelligence.head",)

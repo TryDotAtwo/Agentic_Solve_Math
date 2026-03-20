@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
@@ -16,6 +17,11 @@ class AgentManifest:
     scope: str
     department_key: str
     rank: str
+    private_profile_root: Path
+    memory_file: Path
+    instructions_file: Path
+    rules_file: Path
+    reports_file: Path
     read_roots: tuple[Path, ...]
     write_roots: tuple[Path, ...]
     hidden_roots: tuple[Path, ...]
@@ -27,6 +33,14 @@ class AgentManifest:
 
     def to_dict(self) -> dict[str, object]:
         data = asdict(self)
+        for key in (
+            "private_profile_root",
+            "memory_file",
+            "instructions_file",
+            "rules_file",
+            "reports_file",
+        ):
+            data[key] = str(getattr(self, key))
         for key in ("read_roots", "write_roots", "hidden_roots", "mutable_rule_roots"):
             data[key] = [str(item) for item in getattr(self, key)]
         return data
@@ -274,6 +288,11 @@ def _resolve_roots(root: Path, items: tuple[str, ...]) -> tuple[Path, ...]:
     return tuple(root / item for item in items)
 
 
+def _agent_slug(agent_id: str) -> str:
+    slug = re.sub(r"[^a-z0-9_]+", "_", agent_id.split(".")[-1].lower())
+    return slug.strip("_") or "agent"
+
+
 def _root_dept_workspace(root: Path, department_key: str) -> Path:
     return _workspace_runtime_root(root) / "root" / department_key
 
@@ -290,6 +309,23 @@ def _subproject_department_rules(root: Path, subproject_name: str, department_ke
     return root / subproject_name / ".agent_workspace" / "rules" / department_key
 
 
+def _root_agent_private_profile(root: Path, department_key: str, agent_id: str) -> Path:
+    return _workspace_runtime_root(root) / "agent_profiles" / "root" / department_key / _agent_slug(agent_id)
+
+
+def _subproject_agent_private_profile(root: Path, subproject_name: str, department_key: str, agent_id: str) -> Path:
+    return root / subproject_name / ".agent_workspace" / "agent_profiles" / department_key / _agent_slug(agent_id)
+
+
+def _profile_files(private_root: Path) -> tuple[Path, Path, Path, Path]:
+    return (
+        private_root / "memory.md",
+        private_root / "instructions.md",
+        private_root / "rules.md",
+        private_root / "reports.md",
+    )
+
+
 def _shared_service_ids(department_key: str, staff: tuple[tuple[str, str, bool], ...], prefix: str) -> tuple[str, ...]:
     shared = []
     for slug, _, is_shared in staff:
@@ -301,6 +337,10 @@ def _shared_service_ids(department_key: str, staff: tuple[tuple[str, str, bool],
 def build_root_organization(root: Path) -> OrganizationModel:
     root = root.resolve()
     hidden_roots = _root_hidden_roots(root)
+    executive_private_root = _root_agent_private_profile(root, "root_command", ROOT_EXECUTIVE_ID)
+    executive_memory, executive_instructions, executive_rules, executive_reports = _profile_files(
+        executive_private_root
+    )
 
     departments: list[DepartmentManifest] = []
     agents: list[AgentManifest] = [
@@ -310,14 +350,26 @@ def build_root_organization(root: Path) -> OrganizationModel:
             scope="root",
             department_key="root_command",
             rank="executive",
+            private_profile_root=executive_private_root,
+            memory_file=executive_memory,
+            instructions_file=executive_instructions,
+            rules_file=executive_rules,
+            reports_file=executive_reports,
             read_roots=(
                 root / "rules",
                 root / "kaggle_intake",
                 root / "workspace_orchestrator",
                 _workspace_runtime_root(root),
+                executive_private_root,
             ),
-            write_roots=(root / "rules", root / "workspace_orchestrator", _workspace_runtime_root(root)),
-            hidden_roots=(),
+            write_roots=(
+                root / "rules",
+                root / "workspace_orchestrator",
+                _workspace_runtime_root(root),
+                executive_memory,
+                executive_reports,
+            ),
+            hidden_roots=hidden_roots,
             allowed_tools=("orchestrate", "delegate", "log_update"),
         )
     ]
@@ -346,10 +398,9 @@ def build_root_organization(root: Path) -> OrganizationModel:
             _root_dept_workspace(root, key),
             *_resolve_roots(root, tuple(spec["extra_reads"])),
         )
-        write_roots = (
-            _root_dept_workspace(root, key),
-            *_resolve_roots(root, tuple(spec["extra_writes"])),
-        )
+        head_private_root = _root_agent_private_profile(root, key, head_id)
+        head_memory, head_instructions, head_rules, head_reports = _profile_files(head_private_root)
+        write_roots = (_root_dept_workspace(root, key), *_resolve_roots(root, tuple(spec["extra_writes"])))
 
         agents.append(
             AgentManifest(
@@ -358,29 +409,43 @@ def build_root_organization(root: Path) -> OrganizationModel:
                 scope="root",
                 department_key=key,
                 rank="head",
-                read_roots=tuple(dict.fromkeys(read_roots)),
-                write_roots=tuple(dict.fromkeys(write_roots)),
+                private_profile_root=head_private_root,
+                memory_file=head_memory,
+                instructions_file=head_instructions,
+                rules_file=head_rules,
+                reports_file=head_reports,
+                read_roots=tuple(dict.fromkeys((*read_roots, head_private_root))),
+                write_roots=tuple(dict.fromkeys((*write_roots, head_memory, head_reports))),
                 hidden_roots=hidden_roots,
                 allowed_tools=tuple(spec["allowed_tools"]),
                 mutable_rule_roots=(_root_department_rules(root, key),),
             )
         )
         for slug, display_name, is_shared in spec["staff"]:
+            staff_id = f"root.{key}.{slug}"
+            staff_private_root = _root_agent_private_profile(root, key, staff_id)
+            staff_memory, staff_instructions, staff_rules, staff_reports = _profile_files(staff_private_root)
             agents.append(
                 AgentManifest(
-                    agent_id=f"root.{key}.{slug}",
+                    agent_id=staff_id,
                     display_name=display_name,
                     scope="root",
                     department_key=key,
                     rank="staff",
-                    read_roots=tuple(dict.fromkeys(read_roots)),
-                    write_roots=tuple(dict.fromkeys(write_roots)),
+                    private_profile_root=staff_private_root,
+                    memory_file=staff_memory,
+                    instructions_file=staff_instructions,
+                    rules_file=staff_rules,
+                    reports_file=staff_reports,
+                    read_roots=tuple(dict.fromkeys((*read_roots, staff_private_root))),
+                    write_roots=tuple(dict.fromkeys((*write_roots, staff_memory, staff_reports))),
                     hidden_roots=hidden_roots,
                     allowed_tools=tuple(spec["allowed_tools"]),
                     shared_service=is_shared,
                 )
             )
 
+    agents = _attach_private_profile_visibility(tuple(agents))
     agents = _attach_call_graph(tuple(agents), tuple(departments), ROOT_EXECUTIVE_ID)
     return OrganizationModel(
         name="root",
@@ -395,9 +460,18 @@ def build_subproject_organization(root: Path, subproject_name: str) -> Organizat
     root = root.resolve()
     hidden_roots = _subproject_hidden_roots(root, subproject_name)
     subproject_path = root / subproject_name
+    commander_id = f"subproject.{subproject_name}.commander"
+    commander_private_root = _subproject_agent_private_profile(
+        root,
+        subproject_name,
+        "00_project_command",
+        commander_id,
+    )
+    commander_memory, commander_instructions, commander_rules, commander_reports = _profile_files(
+        commander_private_root
+    )
 
     departments: list[DepartmentManifest] = []
-    commander_id = f"subproject.{subproject_name}.commander"
     agents: list[AgentManifest] = [
         AgentManifest(
             agent_id=commander_id,
@@ -405,8 +479,13 @@ def build_subproject_organization(root: Path, subproject_name: str) -> Organizat
             scope="subproject",
             department_key="00_project_command",
             rank="executive",
-            read_roots=(subproject_path, subproject_path / ".agent_workspace"),
-            write_roots=(subproject_path / ".agent_workspace",),
+            private_profile_root=commander_private_root,
+            memory_file=commander_memory,
+            instructions_file=commander_instructions,
+            rules_file=commander_rules,
+            reports_file=commander_reports,
+            read_roots=(subproject_path, subproject_path / ".agent_workspace", commander_private_root),
+            write_roots=(subproject_path / ".agent_workspace", commander_memory, commander_reports),
             hidden_roots=hidden_roots,
             callable_agents=(ROOT_EXECUTIVE_ID,),
             allowed_tools=("local_orchestrate", "local_delegate"),
@@ -437,6 +516,8 @@ def build_subproject_organization(root: Path, subproject_name: str) -> Organizat
         )
         read_roots = (subproject_path, _subproject_dept_workspace(root, subproject_name, key))
         write_roots = (_subproject_dept_workspace(root, subproject_name, key),)
+        head_private_root = _subproject_agent_private_profile(root, subproject_name, key, head_id)
+        head_memory, head_instructions, head_rules, head_reports = _profile_files(head_private_root)
 
         agents.append(
             AgentManifest(
@@ -445,32 +526,46 @@ def build_subproject_organization(root: Path, subproject_name: str) -> Organizat
                 scope="subproject",
                 department_key=key,
                 rank="head",
-                read_roots=read_roots,
-                write_roots=write_roots,
+                private_profile_root=head_private_root,
+                memory_file=head_memory,
+                instructions_file=head_instructions,
+                rules_file=head_rules,
+                reports_file=head_reports,
+                read_roots=tuple(dict.fromkeys((*read_roots, head_private_root))),
+                write_roots=tuple(dict.fromkeys((*write_roots, head_memory, head_reports))),
                 hidden_roots=hidden_roots,
                 allowed_tools=tuple(spec["allowed_tools"]),
                 mutable_rule_roots=(_subproject_department_rules(root, subproject_name, key),),
             )
         )
         for slug, display_name, is_shared in spec["staff"]:
+            staff_id = f"subproject.{subproject_name}.{key}.{slug}"
+            staff_private_root = _subproject_agent_private_profile(root, subproject_name, key, staff_id)
+            staff_memory, staff_instructions, staff_rules, staff_reports = _profile_files(staff_private_root)
             extra_write_roots = list(write_roots)
             if key == "07_editorial_and_history":
                 extra_write_roots.append(subproject_path / "docs")
             agents.append(
                 AgentManifest(
-                    agent_id=f"subproject.{subproject_name}.{key}.{slug}",
+                    agent_id=staff_id,
                     display_name=display_name,
                     scope="subproject",
                     department_key=key,
                     rank="staff",
-                    read_roots=read_roots,
-                    write_roots=tuple(extra_write_roots),
+                    private_profile_root=staff_private_root,
+                    memory_file=staff_memory,
+                    instructions_file=staff_instructions,
+                    rules_file=staff_rules,
+                    reports_file=staff_reports,
+                    read_roots=tuple(dict.fromkeys((*read_roots, staff_private_root))),
+                    write_roots=tuple(dict.fromkeys((*extra_write_roots, staff_memory, staff_reports))),
                     hidden_roots=hidden_roots,
                     allowed_tools=tuple(spec["allowed_tools"]),
                     shared_service=is_shared,
                 )
             )
 
+    agents = _attach_private_profile_visibility(tuple(agents))
     agents = _attach_call_graph(tuple(agents), tuple(departments), commander_id)
     return OrganizationModel(
         name=subproject_name,
@@ -516,4 +611,14 @@ def _attach_call_graph(
             )
         )
 
+    return updated
+
+
+def _attach_private_profile_visibility(agents: tuple[AgentManifest, ...]) -> list[AgentManifest]:
+    private_roots = {agent.agent_id: agent.private_profile_root for agent in agents}
+    updated: list[AgentManifest] = []
+    for agent in agents:
+        hidden = list(agent.hidden_roots)
+        hidden.extend(path for owner_id, path in private_roots.items() if owner_id != agent.agent_id)
+        updated.append(replace(agent, hidden_roots=tuple(dict.fromkeys(hidden))))
     return updated
